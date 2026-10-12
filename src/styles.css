@@ -1,0 +1,56 @@
+:root {
+  --paper: #eaf0ec; --card: #f8faf8; --ink: #14241c; --muted: #5b6b62; --line: #cbd7cf;
+  --forest: #1e5a43; --forest-d: #154431; --gold: #e0a800; --red: #a8322b;
+  --serif: "Newsreader", Georgia, serif; --sans: "Public Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--sans); }
+h1, h2 { font-family: var(--serif); font-weight: 600; line-height: 1.15; margin: 0 0 .5rem; }
+h1 { font-size: 2rem; } h2 { font-size: 1.2rem; margin-top: 2rem; }
+.card h2 { margin-top: 0; font-size: 1rem; font-family: var(--sans); color: var(--muted); font-weight: 500; }
+main { max-width: 64rem; margin: 0 auto; padding: 1rem 1rem 6rem; }
+.muted { color: var(--muted); } .center { text-align: center; padding: 3rem; }
+.top { display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 2; }
+.brand { font: 600 1.4rem var(--serif); margin-right: auto; }
+.top nav { display: flex; gap: .25rem; }
+.top nav a { padding: .4rem .9rem; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 500; }
+.top nav a.active { background: var(--forest); color: #fff; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.1rem; }
+.stack { display: grid; gap: .9rem; }
+label { display: grid; gap: .3rem; font-weight: 500; font-size: .95rem; }
+input, select, textarea { font: inherit; padding: .65rem .75rem; border: 1px solid #9fb2a6; border-radius: 6px; background: #fff; color: var(--ink); width: 100%; }
+textarea { font: 1.3rem/1.5 var(--serif); resize: vertical; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button { font: inherit; cursor: pointer; border-radius: 6px; padding: .7rem 1.1rem; border: 1px solid transparent; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.primary { background: var(--forest); color: #fff; font-weight: 600; } .primary:hover:not(:disabled) { background: var(--forest-d); }
+.ghost { background: transparent; border-color: var(--forest); color: var(--forest); font-weight: 500; }
+.link { background: none; border: 0; padding: .3rem 0; color: var(--forest); text-decoration: underline; justify-self: start; }
+.error { color: var(--red); margin: 0; } .ok { color: var(--forest); margin: 0; } .hint { font-weight: 400; color: var(--muted); font-size: .85rem; }
+.login { max-width: 26rem; margin: 0 auto; padding: 12vh 1rem 2rem; }
+.lede { font: 1.15rem/1.45 var(--serif); color: var(--muted); margin-bottom: 1.5rem; }
+.session { margin: .25rem 0 1rem; }
+.pair { display: grid; gap: 1rem; }
+.sentence { font: 1.6rem/1.4 var(--serif); margin: 0 0 1rem; }
+.source { display: flex; flex-direction: column; }
+.stub { margin-top: auto; display: flex; justify-content: space-between; align-items: center; border-top: 2px dashed var(--gold); padding-top: .8rem; }
+.reward { font: 600 1.3rem var(--serif); background: var(--gold); color: #261c00; padding: .15rem .7rem; border-radius: 4px; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.tag { padding: .15rem .65rem; border-radius: 999px; font-size: .85rem; font-weight: 500; border: 1px solid var(--line); }
+.tag.easy, .tag.paid { background: #d7eadd; } .tag.medium, .tag.pending { background: #f6e9b8; } .tag.hard, .tag.rejected, .tag.cancelled { background: #f1d3cf; }
+.balance { display: grid; gap: .6rem; margin: 1rem 0; }
+.label { margin: 0; color: var(--muted); } .big { font: 600 2.6rem/1 var(--serif); margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; margin: 0 0 1rem; }
+.stats div { padding: .6rem 0; border-top: 1px solid var(--line); } .stats dt { color: var(--muted); font-size: .9rem; } .stats dd { margin: 0; font: 600 1.25rem var(--serif); }
+.list { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: .6rem; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+@media (min-width: 52rem) {
+  .pair { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .stats { grid-template-columns: repeat(4, 1fr); }
+  .profile { max-width: 40rem; }
+}
+@media (max-width: 40rem) {
+  .actions button { flex: 1; } .primary { width: 100%; }
+  .top { position: fixed; top: auto; bottom: 0; left: 0; right: 0; border: 0; border-top: 1px solid var(--line); justify-content: space-between; }
+  .top .brand { display: none; } .top nav { flex: 1; } .top nav a { flex: 1; text-align: center; }
+}
