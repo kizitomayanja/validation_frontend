@@ -26,6 +26,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .primary { background: var(--forest); color: #fff; font-weight: 600; } .primary:hover:not(:disabled) { background: var(--forest-d); }
 .ghost { background: transparent; border-color: var(--forest); color: var(--forest); font-weight: 500; }
 .link { background: none; border: 0; padding: .3rem 0; color: var(--forest); text-decoration: underline; justify-self: start; }
+.password-field { display: grid; gap: .3rem; }
+.password-input { display: flex; }
+.password-input input { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.password-toggle { border: 1px solid #9fb2a6; border-left: 0; border-radius: 0 6px 6px 0; background: #fff; color: var(--forest); padding: .65rem .75rem; }
 .error { color: var(--red); margin: 0; } .ok { color: var(--forest); margin: 0; } .hint { font-weight: 400; color: var(--muted); font-size: .85rem; }
 .login { max-width: 26rem; margin: 0 auto; padding: 12vh 1rem 2rem; }
 .lede { font: 1.15rem/1.45 var(--serif); color: var(--muted); margin-bottom: 1.5rem; }

@@ -24,6 +24,7 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
   switch (key) {
     case "POST /auth/login": user.email = body.email; return json({ access_token: "a", refresh_token: "r" });
     case "POST /auth/register": user.email = body.email; user.full_name = body.full_name; return json({ access_token: "a", refresh_token: "r" });
+    case "POST /auth/password-reset": return json({ message: "If an account exists for that email, password reset instructions will be sent." });
     case "POST /auth/refresh": return json({ access_token: "a", refresh_token: "r" });
     case "POST /auth/logout": return json(null, 204);
     case "GET /me": return json(user);

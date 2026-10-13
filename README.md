@@ -23,6 +23,7 @@ Trade-off: `localStorage` is readable by injected scripts; an httpOnly cookie fo
 |---|---|---|
 | `POST /auth/register` | `{full_name, email, password}` | `{access_token, refresh_token}` |
 | `POST /auth/login` | `{email, password}` | `{access_token, refresh_token}` |
+| `POST /auth/password-reset` | `{email}` | generic success response |
 | `POST /auth/refresh` | `{refresh_token}` | new `{access_token, refresh_token}` |
 | `POST /auth/logout` | `{refresh_token}` | 204 (revoke) |
 | `GET /me` | | `{id, email, full_name, role}` |
