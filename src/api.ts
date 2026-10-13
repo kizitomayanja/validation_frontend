@@ -7,8 +7,8 @@ export type Provider = "mtn" | "airtel";
 export type PaymentMethod = { id: string; provider: Provider; phone_number: string; account_name: string; is_default: boolean };
 export type Payout = { id: string; amount_ugx: number; status: "pending" | "paid" | "rejected" | "cancelled"; requested_at: string; provider: Provider; phone_number: string; account_name: string };
 
-const BASE = import.meta.env.API_URL ?? "http://localhost:8000";
-const MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const BASE = import.meta.env.MY_PREF_API_URL;
+const MOCK = import.meta.env.MY_PREF_USE_MOCK === "true";
 const RT = "vp_refresh";
 let access: string | null = null;
 
