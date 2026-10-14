@@ -24,7 +24,9 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
   switch (key) {
     case "POST /auth/login": user.email = body.email; return json({ access_token: "a", refresh_token: "r" });
     case "POST /auth/register": user.email = body.email; user.full_name = body.full_name; return json({ access_token: "a", refresh_token: "r" });
-    case "POST /auth/password-reset": return json({ message: "If an account exists for that email, password reset instructions will be sent." });
+    case "POST /auth/password-reset":
+    case "POST /auth/password-reset/request": return json({ message: "If an account exists for that email, password reset instructions will be sent." });
+    case "POST /auth/password-reset/confirm": return json({ message: "Your password has been reset. Please sign in with your new password." });
     case "POST /auth/refresh": return json({ access_token: "a", refresh_token: "r" });
     case "POST /auth/logout": return json(null, 204);
     case "GET /me": return json(user);
@@ -35,7 +37,11 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
       return json({ id: s.id, noisy_english: s.noisy_english, attempted: s.attempted, difficulty: s.difficulty, reward_ugx: reward(s.cost) });
     }
     case "POST /work/:id/submit": {
-      const s = queue[pos % queue.length]; pos++; validated++;
+      const s = queue[pos % queue.length];
+      if (body.clean_lug === s.attempted && !body.confirmed_unchanged) {
+        return json({ detail: "The translation is identical to the AI attempt. If the AI was completely accurate, confirm unchanged, or fix any translation errors." }, 422);
+      }
+      pos++; validated++;
       earned += reward(s.cost); available += reward(s.cost);
       return json({ reward_ugx: reward(s.cost) });
     }

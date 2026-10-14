@@ -17,7 +17,7 @@ export default function Login() {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
     try {
       if (mode === "reset") {
-        await post("/auth/password-reset", { email: f.email });
+        await post("/auth/password-reset/request", { email: f.email }).catch(() => post("/auth/password-reset", { email: f.email }));
         setMessage("If an account exists for that email, password reset instructions will be sent.");
       } else if (mode === "in") {
         await signIn(f.email, f.password);

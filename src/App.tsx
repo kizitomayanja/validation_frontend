@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import Work from "./pages/Work";
 import Profile from "./pages/Profile";
 import "./styles.css";
@@ -34,6 +35,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route element={<Shell />}>
             <Route path="/work" element={<Work />} />
             <Route path="/profile" element={<Profile />} />
