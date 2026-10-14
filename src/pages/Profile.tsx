@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, post, ugx, type Balance, type PaymentMethod, type Payout, type Provider } from "../api";
 import { useAuth } from "../auth";
 
-// Accepts 07XXXXXXXX, 2567XXXXXXXX or +2567XXXXXXXX and returns +256XXXXXXXXX (matches the DB check constraint).
+// Accepts 07XXXXXXXX, 2567XXXXXXXX or +2567XXXXXXXX and returns +256XXXXXXXXX (Ugandan mobile numbers).
 export function normalisePhone(v: string): string | null {
   const d = v.replace(/[\s-]/g, "");
-  if (/^\+256\d{9}$/.test(d)) return d;
-  if (/^256\d{9}$/.test(d)) return "+" + d;
-  if (/^0\d{9}$/.test(d)) return "+256" + d.slice(1);
+  if (/^\+2567\d{8}$/.test(d)) return d;
+  if (/^2567\d{8}$/.test(d)) return "+" + d;
+  if (/^07\d{8}$/.test(d)) return "+256" + d.slice(1);
   return null;
 }
 const NAMES: Record<Provider, string> = { mtn: "MTN MoMo", airtel: "Airtel Money" };
