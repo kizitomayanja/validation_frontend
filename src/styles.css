@@ -58,3 +58,11 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .top { position: fixed; top: auto; bottom: 0; left: 0; right: 0; border: 0; border-top: 1px solid var(--line); justify-content: space-between; }
   .top .brand { display: none; } .top nav { flex: 1; } .top nav a { flex: 1; text-align: center; }
 }
+
+.medical-note { background: #e2ede5; border-left: 4px solid var(--forest); padding: .6rem .8rem; font-size: .88rem; border-radius: 4px; margin-bottom: .8rem; color: #163c2c; }
+.timer { font-size: .85rem; font-weight: 600; color: var(--muted); padding: .2rem .5rem; border-radius: 4px; background: #e3eae5; }
+.timer.warning { color: var(--red); background: #fde8e7; animation: pulse 1s infinite alternate; }
+.checkbox-label { display: flex; align-items: flex-start; gap: .5rem; font-size: .88rem; font-weight: 400; cursor: pointer; margin-top: .5rem; background: #fff8e1; padding: .6rem; border-radius: 6px; border: 1px solid #ffe082; }
+.checkbox-label input { width: auto; margin-top: .2rem; }
+.button-link { display: inline-block; text-align: center; text-decoration: none; border-radius: 6px; padding: .7rem 1.1rem; }
+
