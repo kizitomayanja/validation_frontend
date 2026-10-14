@@ -1,4 +1,4 @@
-﻿import { mockFetch } from "./mock";
+import { mockFetch } from "./mock";
 
 export type User = { id: string; email: string; full_name: string; role: string };
 export type Sentence = { id: number; noisy_english: string; attempted: string; difficulty: "easy" | "medium" | "hard"; reward_ugx: number };
@@ -7,19 +7,34 @@ export type Provider = "mtn" | "airtel";
 export type PaymentMethod = { id: string; provider: Provider; phone_number: string; account_name: string; is_default: boolean };
 export type Payout = { id: string; amount_ugx: number; status: "pending" | "paid" | "rejected" | "cancelled"; requested_at: string; provider: Provider; phone_number: string; account_name: string };
 
-const BASE = String(import.meta.env.MY_PREF_API_URL ?? "http://localhost:8000").trim().replace(/\/+$/, "");
-const MOCK = import.meta.env.MY_PREF_USE_MOCK === "true";
+const BASE = String(import.meta.env.VITE_API_URL ?? import.meta.env.MY_PREF_API_URL ?? "http://localhost:8000").trim().replace(/\/+$/, "");
+const MOCK = import.meta.env.VITE_USE_MOCK === "true" || import.meta.env.MY_PREF_USE_MOCK === "true";
 const RT = "vp_refresh";
 let access: string | null = null;
+
+// Multi-tab channel to prevent replay of rotated refresh tokens across open tabs
+const authChannel = typeof window !== "undefined" && "BroadcastChannel" in window ? new BroadcastChannel("vp_auth") : null;
+if (authChannel) {
+  authChannel.onmessage = (event) => {
+    if (event.data?.type === "REFRESHED" && event.data?.access) {
+      access = event.data.access;
+    } else if (event.data?.type === "LOGOUT") {
+      access = null;
+      localStorage.removeItem(RT);
+    }
+  };
+}
 
 export const tokens = {
   set(a: string, r: string) {
     access = a;
     localStorage.setItem(RT, r);
+    authChannel?.postMessage({ type: "REFRESHED", access: a });
   },
   clear() {
     access = null;
     localStorage.removeItem(RT);
+    authChannel?.postMessage({ type: "LOGOUT" });
   },
   refresh: () => localStorage.getItem(RT),
 };
@@ -33,7 +48,7 @@ export class ApiError extends Error {
 function raw(path: string, init: RequestInit = {}, auth = true): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("Content-Type", "application/json");
-  if (auth && access) headers.set("Authorization", String.fromCharCode(66,69,65,82,69,82,32) + access);
+  if (auth && access) headers.set("Authorization", "Bearer " + access);
   const req = { ...init, headers };
   return MOCK ? mockFetch(path, req) : fetch(BASE + path, req);
 }
