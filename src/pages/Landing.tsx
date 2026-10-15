@@ -1,41 +1,136 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 
 export default function Landing() {
   const { user } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="landing-page">
       {/* Navigation Header */}
       <header className="landing-nav">
-        <div className="landing-brand">
-          <span className="brand-leaf">🌿</span>
-          <span className="brand-name">Ekyama</span>
-          <span className="brand-tag">Uganda Clinical AI</span>
+        <div className="landing-nav-container">
+          <Link to="/" className="landing-brand" onClick={() => setMobileMenuOpen(false)}>
+            <span className="brand-leaf">🌿</span>
+            <span className="brand-name">Ekyama</span>
+            <span className="brand-tag">Uganda Clinical AI</span>
+          </Link>
+
+          {/* Desktop Anchor Links */}
+          <nav className="landing-links desktop-only">
+            <a href="#mission">The Mission</a>
+            <a href="#humanitarian">Why It Matters</a>
+            <a href="#clinical-examples">Clinical Examples</a>
+            <a href="#how-it-works">How It Works</a>
+          </nav>
+
+          {/* Desktop Actions & Mobile Toggle */}
+          <div className="landing-auth-actions">
+            <div className="landing-desktop-auth desktop-only">
+              {user ? (
+                <Link to={user.role === "admin" ? "/admin" : user.role === "reviewer" ? "/review" : "/work"} className="primary landing-btn">
+                  Go to Portal →
+                </Link>
+              ) : (
+                <>
+                  <Link to="/login" className="ghost landing-login-btn">
+                    Sign In
+                  </Link>
+                  <Link to="/login?mode=register" className="primary landing-btn">
+                    Join the Mission
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Mobile Hamburger Toggle Button */}
+            <button
+              type="button"
+              className={`mobile-menu-toggle ${mobileMenuOpen ? "open" : ""}`}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={mobileMenuOpen}
+            >
+              <span className="hamburger-icon">
+                <span className="line"></span>
+                <span className="line"></span>
+                <span className="line"></span>
+              </span>
+            </button>
+          </div>
         </div>
-        <nav className="landing-links">
-          <a href="#mission">The Mission</a>
-          <a href="#humanitarian">Why It Matters</a>
-          <a href="#clinical-examples">Clinical Examples</a>
-          <a href="#how-it-works">How It Works</a>
-        </nav>
-        <div className="landing-auth-actions">
-          {user ? (
-            <Link to={user.role === "admin" ? "/admin" : user.role === "reviewer" ? "/review" : "/work"} className="primary landing-btn">
-              Go to Portal →
-            </Link>
-          ) : (
-            <>
-              <Link to="/login" className="ghost landing-login-btn">
-                Sign In
-              </Link>
-              <Link to="/login?mode=register" className="primary landing-btn">
-                Join the Mission
-              </Link>
-            </>
-          )}
-        </div>
+
+        {/* Mobile Dropdown Drawer */}
+        {mobileMenuOpen && (
+          <div className="landing-mobile-drawer">
+            <nav className="mobile-nav-links">
+              <a href="#mission" onClick={() => setMobileMenuOpen(false)}>
+                <span className="nav-icon">🎯</span>
+                <div className="nav-text">
+                  <strong>The Mission</strong>
+                  <small>Emergency triage & clinical AI</small>
+                </div>
+              </a>
+              <a href="#humanitarian" onClick={() => setMobileMenuOpen(false)}>
+                <span className="nav-icon">❤️</span>
+                <div className="nav-text">
+                  <strong>Why It Matters</strong>
+                  <small>Beyond token rewards: saving lives</small>
+                </div>
+              </a>
+              <a href="#clinical-examples" onClick={() => setMobileMenuOpen(false)}>
+                <span className="nav-icon">🔬</span>
+                <div className="nav-text">
+                  <strong>Clinical Examples</strong>
+                  <small>Flawed machine vs doctor-verified Luganda</small>
+                </div>
+              </a>
+              <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>
+                <span className="nav-icon">📋</span>
+                <div className="nav-text">
+                  <strong>How It Works</strong>
+                  <small>Claim, refine, verify, MoMo payout</small>
+                </div>
+              </a>
+            </nav>
+
+            <div className="mobile-drawer-auth">
+              {user ? (
+                <Link
+                  to={user.role === "admin" ? "/admin" : user.role === "reviewer" ? "/review" : "/work"}
+                  className="primary mobile-action-btn"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Go to Portal Dashboard →
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/login?mode=register"
+                    className="primary mobile-action-btn"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Join the Mission (Create Account) →
+                  </Link>
+                  <Link
+                    to="/login"
+                    className="ghost mobile-action-btn"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In to Existing Account
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </header>
+
+      {/* Backdrop overlay when mobile menu is open */}
+      {mobileMenuOpen && (
+        <div className="mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)} />
+      )}
 
       {/* Hero Section */}
       <section className="landing-hero" id="mission">
