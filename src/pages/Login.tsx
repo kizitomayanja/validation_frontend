@@ -1,17 +1,26 @@
 import { useState, type FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { post } from "../api";
 import { useAuth } from "../auth";
 
 export default function Login() {
   const { user, signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<"in" | "up" | "reset">("in");
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<"in" | "up" | "reset">(() => {
+    const m = searchParams.get("mode");
+    return m === "register" || m === "up" ? "up" : "in";
+  });
   const [f, setF] = useState({ full_name: "", email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  if (user) return <Navigate to="/work" replace />;
+
+  if (user) {
+    if (user.role === "admin") return <Navigate to="/admin" replace />;
+    if (user.role === "reviewer") return <Navigate to="/review" replace />;
+    return <Navigate to="/work" replace />;
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setBusy(true); setError(""); setMessage("");
@@ -32,8 +41,14 @@ export default function Login() {
 
   return (
     <div className="login">
+      <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+        <Link to="/" className="link hint">← Back to Mission & Overview</Link>
+      </div>
       <h1>Ekyama</h1>
-      <p className="lede">Correct Luganda translations of medical conversations. Every sentence you finish earns you money.</p>
+      <p className="lede">
+        Correct Luganda translations of hospital medical dialogues.
+        Every verified sentence teaches an AI doctor to speak our language with life-saving accuracy.
+      </p>
       <form onSubmit={submit} className="card stack">
         {mode === "reset" ? (
           <>
@@ -43,8 +58,8 @@ export default function Login() {
           </>
         ) : (
           <>
-            {mode === "up" && <label>Full name<input required value={f.full_name} onChange={set("full_name")} autoComplete="name" /></label>}
-            <label>Email<input type="email" required value={f.email} onChange={set("email")} autoComplete="email" /></label>
+            {mode === "up" && <label>Full name<input required value={f.full_name} onChange={set("full_name")} autoComplete="name" placeholder="e.g. Amina Nabukeera" /></label>}
+            <label>Email<input type="email" required value={f.email} onChange={set("email")} autoComplete="email" placeholder="name@example.com" /></label>
             <div className="password-field">
               <label htmlFor="login-password">Password</label>
               <span className="password-input">
@@ -58,11 +73,13 @@ export default function Login() {
         )}
         {error && <p className="error" role="alert">{error}</p>}
         {message && <p className="ok" role="status">{message}</p>}
-        <button className="primary" disabled={busy}>{busy ? "Please wait…" : mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Send reset instructions"}</button>
+        <button className="primary" disabled={busy}>
+          {busy ? "Please wait…" : mode === "in" ? "Sign in to Dashboard" : mode === "up" ? "Create Validator Account" : "Send reset instructions"}
+        </button>
         {mode === "in" && <button type="button" className="link" onClick={() => { setMode("reset"); setError(""); setMessage(""); }}>Forgot password?</button>}
         {mode !== "reset" ? (
           <button type="button" className="link" onClick={() => { setMode(mode === "in" ? "up" : "in"); setError(""); setMessage(""); }}>
-            {mode === "in" ? "New here? Create an account" : "Have an account? Sign in"}
+            {mode === "in" ? "New here? Create a validator account" : "Already have an account? Sign in"}
           </button>
         ) : (
           <button type="button" className="link" onClick={() => { setMode("in"); setError(""); setMessage(""); }}>Back to sign in</button>

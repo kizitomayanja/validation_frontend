@@ -1,5 +1,6 @@
-import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Work from "./pages/Work";
@@ -24,7 +25,7 @@ function Shell() {
   return (
     <>
       <header className="top">
-        <span className="brand">Ekyama</span>
+        <Link to="/" className="brand" title="View Project Mission & Overview">🌿 Ekyama</Link>
         <nav>
           {isAdmin && <NavLink to="/admin">Admin</NavLink>}
           {isReviewer && <NavLink to="/review">Review</NavLink>}
@@ -58,7 +59,7 @@ function RequireRole({ allowed, children }: { allowed: string[]; children: JSX.E
 function DefaultRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <p className="center muted">Loading…</p>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/" replace />;
   if (user.role === "admin") return <Navigate to="/admin" replace />;
   if (user.role === "reviewer") return <Navigate to="/review" replace />;
   return <Navigate to="/work" replace />;
@@ -69,6 +70,7 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route element={<Shell />}>
@@ -91,7 +93,6 @@ export default function App() {
             <Route path="/work" element={<Work />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
-          <Route path="/" element={<DefaultRedirect />} />
           <Route path="*" element={<DefaultRedirect />} />
         </Routes>
       </AuthProvider>
