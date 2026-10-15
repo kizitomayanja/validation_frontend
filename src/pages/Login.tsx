@@ -47,7 +47,7 @@ export default function Login() {
       <h1>Ekyama</h1>
       <p className="lede">
         Correct Luganda translations of hospital medical dialogues.
-        Every verified sentence teaches an AI doctor to speak our language with life-saving accuracy.
+        Every verified sentence teaches an AI clinical translator to speak our language with life-saving accuracy.
       </p>
       <form onSubmit={submit} className="card stack">
         {mode === "reset" ? (

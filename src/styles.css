@@ -740,10 +740,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 .hero-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.25rem;
   width: 100%;
-  max-width: 50rem;
+  max-width: 44rem;
 }
 
 .stat-card {
@@ -1239,8 +1239,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
     grid-template-columns: 1fr;
   }
   .hero-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
   .steps-grid {
     grid-template-columns: 1fr;
   }

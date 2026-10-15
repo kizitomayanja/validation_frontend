@@ -83,7 +83,7 @@ export default function Landing() {
                 <span className="nav-icon">🔬</span>
                 <div className="nav-text">
                   <strong>Clinical Examples</strong>
-                  <small>Flawed machine vs doctor-verified Luganda</small>
+                  <small>Flawed machine vs qualified reviewer-verified Luganda</small>
                 </div>
               </a>
               <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>
@@ -170,11 +170,7 @@ export default function Landing() {
             </div>
             <div className="stat-card">
               <span className="stat-number">100%</span>
-              <span className="stat-label">Doctor-Verified QA</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-number">UGX 10M</span>
-              <span className="stat-label">Community Fund Pool</span>
+              <span className="stat-label">Reviewed by Qualified Reviewers</span>
             </div>
             <div className="stat-card">
               <span className="stat-number">Instant</span>
@@ -373,9 +369,9 @@ export default function Landing() {
 
             <div className="step-card">
               <div className="step-number">3</div>
-              <h3>Reviewed by Doctors & Paid</h3>
+              <h3>Reviewed by Qualified Reviewers & Paid</h3>
               <p>
-                Our panel of Ugandan medical reviewers clinically verifies your work. Request instant cashout directly to your MTN or Airtel Mobile Money phone.
+                Our panel of qualified reviewers clinically verifies your work. Request instant cashout directly to your MTN or Airtel Mobile Money phone.
               </p>
             </div>
           </div>
