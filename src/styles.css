@@ -380,6 +380,152 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .reject-trigger-btn:hover { background: #fde8e7; }
 .skip-btn { border-color: var(--line); color: var(--muted); }
 
+/* Review Filtering & Priority Navigation */
+.review-filter-bar {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.review-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.review-filter-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.validator-select {
+  padding: 0.5rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #9fb2a6;
+  background: #fff;
+  font-size: 0.92rem;
+  font-weight: 500;
+  min-width: 15rem;
+  flex: 1;
+}
+
+.username-search-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 16rem;
+}
+
+.username-search-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #9fb2a6;
+  font-size: 0.92rem;
+}
+
+.filter-active-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #e2ede5;
+  color: var(--forest-d);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid #c2d6c9;
+  align-self: flex-start;
+}
+
+.filter-active-pill strong {
+  color: var(--forest);
+}
+
+.clear-filter-btn {
+  background: none;
+  border: none;
+  color: var(--red);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  text-decoration: underline;
+}
+
+.validator-email-hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+/* Sentence Queue Navigator */
+.review-nav-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: #f0f5f2;
+  border: 1px solid #d8e5dd;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.queue-progress-info {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--forest-d);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sentence-jump-select {
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #9fb2a6;
+  background: #fff;
+  font-size: 0.88rem;
+  max-width: 26rem;
+  flex: 1;
+}
+
+.queue-nav-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.queue-nav-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+}
+
+.queue-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.queue-nav-btn:hover:not(:disabled) {
+  background: #e2ede5;
+  border-color: var(--forest);
+}
+
 /* ==========================================================================
    Landing Page Styles
    ========================================================================== */

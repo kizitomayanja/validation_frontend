@@ -70,8 +70,16 @@ export type ReviewSentence = {
   reward_ugx: number;
   validated_by_id: string;
   validator_name: string;
+  validator_email?: string;
   validated_at: string;
   verified: boolean;
+};
+
+export type ReviewValidator = {
+  id: string;
+  name: string;
+  email: string;
+  count: number;
 };
 
 const BASE = String(import.meta.env.VITE_API_URL ?? import.meta.env.MY_PREF_API_URL ?? "http://localhost:8000").trim().replace(/\/+$/, "");

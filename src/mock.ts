@@ -102,6 +102,7 @@ let reviewQueue = [
     reward_ugx: 1240,
     validated_by_id: "u3",
     validator_name: "Amina Nabukeera",
+    validator_email: "amina@example.com",
     validated_at: "2026-10-13T18:20:00Z",
     verified: false,
   },
@@ -114,6 +115,7 @@ let reviewQueue = [
     reward_ugx: 1350,
     validated_by_id: "u4",
     validator_name: "Paul Kato",
+    validator_email: "paul.kato@ekyama.health",
     validated_at: "2026-10-13T20:45:00Z",
     verified: false,
   },
@@ -126,7 +128,34 @@ let reviewQueue = [
     reward_ugx: 760,
     validated_by_id: "u5",
     validator_name: "Grace Alupo",
+    validator_email: "grace.alupo@ekyama.health",
     validated_at: "2026-10-13T22:10:00Z",
+    verified: false,
+  },
+  {
+    id: 104,
+    noisy_english: "Has the child had convulsive seizures or vomited everything they drink?",
+    attempted: "Omwana alina okusimbibwa oba okusesema byonna by'anywa?",
+    clean_lug: "Omwana abaddemu ensimbu oba okusesema buli ky'anywa?",
+    difficulty: "hard",
+    reward_ugx: 1450,
+    validated_by_id: "u3",
+    validator_name: "Amina Nabukeera",
+    validator_email: "amina@example.com",
+    validated_at: "2026-10-14T08:15:00Z",
+    verified: false,
+  },
+  {
+    id: 105,
+    noisy_english: "Please take two tablets of paracetamol every eight hours after meals.",
+    attempted: "Mire amabaali abiri aga paracetamol buli luvanyuma lwa sawa munaana nga omaze okulya.",
+    clean_lug: "Mira amayinja abiri aga paracetamol buli luvannyuma lwa ssaawa munaana nga omaze okulya.",
+    difficulty: "easy",
+    reward_ugx: 520,
+    validated_by_id: "u4",
+    validator_name: "Paul Kato",
+    validator_email: "paul.kato@ekyama.health",
+    validated_at: "2026-10-14T09:30:00Z",
     verified: false,
   },
 ];
@@ -398,7 +427,37 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
   }
 
   // ------------------------------------------------------------- Review endpoints
+  if (cleanPath === "/review/validators" && m === "GET") {
+    const map = new Map<string, { id: string; name: string; email: string; count: number }>();
+    for (const item of reviewQueue) {
+      const existing = map.get(item.validated_by_id);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(item.validated_by_id, {
+          id: item.validated_by_id,
+          name: item.validator_name,
+          email: item.validator_email || `${item.validator_name.toLowerCase().replace(/\s+/g, ".")}@example.com`,
+          count: 1,
+        });
+      }
+    }
+    return json(Array.from(map.values()));
+  }
+
   if (cleanPath === "/review/queue" && m === "GET") {
+    const queryStr = path.includes("?") ? path.split("?")[1] : "";
+    const params = new URLSearchParams(queryStr);
+    const username = params.get("username")?.trim().toLowerCase();
+    if (username) {
+      return json(
+        reviewQueue.filter(
+          (s) =>
+            s.validator_name.toLowerCase().includes(username) ||
+            s.validator_email?.toLowerCase().includes(username)
+        )
+      );
+    }
     return json(reviewQueue);
   }
 
