@@ -8,6 +8,7 @@ import Work from "./pages/Work";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import Review from "./pages/Review";
+import TestPersonaSwitcher from "./components/TestPersonaSwitcher";
 import "./styles.css";
 
 function RoleBadge({ role }: { role: string }) {
@@ -151,6 +152,7 @@ export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
+        <TestPersonaSwitcher />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />

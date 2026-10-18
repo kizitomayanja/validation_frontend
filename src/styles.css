@@ -1760,3 +1760,179 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   color: #14532d;
   font-size: 0.95rem;
 }
+
+/* ==========================================================================
+   Test Simulation Environment & Persona Switcher Toolbar
+   ========================================================================== */
+.test-switcher-bar {
+  background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+  color: #f8fafc;
+  border-bottom: 2px solid #eab308;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  font-family: inherit;
+}
+
+.test-switcher-inner {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0.45rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.test-switcher-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: #fde047;
+}
+
+.test-isolation-tag {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fef08a;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.test-personas-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.test-switch-label {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-right: 0.15rem;
+  font-weight: 500;
+}
+
+.test-persona-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #334155;
+  color: #cbd5e1;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 0.22rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.test-persona-pill:hover {
+  background: #475569;
+  color: #ffffff;
+  border-color: #64748b;
+}
+
+.test-persona-pill.active {
+  background: #15803d;
+  color: #ffffff;
+  border-color: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  font-weight: 600;
+}
+
+.persona-role-tag {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.test-switcher-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.test-feedback-pill {
+  font-size: 0.75rem;
+  color: #86efac;
+  background: rgba(22, 163, 74, 0.25);
+  border: 1px solid #16a34a;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  animation: fadeIn 0.2s ease;
+}
+
+.test-reset-btn {
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.test-reset-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.test-reset-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.test-collapse-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.test-collapse-btn:hover {
+  color: #f8fafc;
+  background: #334155;
+}
+
+.test-switcher-collapsed {
+  position: fixed;
+  top: 0.5rem;
+  right: 0.75rem;
+  z-index: 10000;
+}
+
+.test-switcher-expand-btn {
+  background: #1e293b;
+  color: #fde047;
+  border: 1px solid #eab308;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.test-switcher-expand-btn:hover {
+  transform: translateY(-1px);
+  background: #0f172a;
+}

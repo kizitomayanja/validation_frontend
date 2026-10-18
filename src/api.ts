@@ -140,13 +140,15 @@ export type DatasetExportStats = {
 };
 
 
+export const IS_TEST_MODE = import.meta.env.VITE_TEST_MODE === "true" || import.meta.env.MODE === "test";
 const BASE = String(import.meta.env.VITE_API_URL ?? import.meta.env.MY_PREF_API_URL ?? "http://localhost:8000").trim().replace(/\/+$/, "");
-const MOCK = import.meta.env.VITE_USE_MOCK === "true" || import.meta.env.MY_PREF_USE_MOCK === "true";
-const RT = "vp_refresh";
+const MOCK = IS_TEST_MODE || import.meta.env.VITE_USE_MOCK === "true" || import.meta.env.MY_PREF_USE_MOCK === "true";
+const RT = IS_TEST_MODE ? "vp_test_refresh" : "vp_refresh";
 let access: string | null = null;
 
 // Multi-tab channel to prevent replay of rotated refresh tokens across open tabs
-const authChannel = typeof window !== "undefined" && "BroadcastChannel" in window ? new BroadcastChannel("vp_auth") : null;
+const authChannelName = IS_TEST_MODE ? "vp_test_auth" : "vp_auth";
+const authChannel = typeof window !== "undefined" && "BroadcastChannel" in window ? new BroadcastChannel(authChannelName) : null;
 if (authChannel) {
   authChannel.onmessage = (event) => {
     if (event.data?.type === "REFRESHED" && event.data?.access) {
