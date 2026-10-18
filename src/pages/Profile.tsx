@@ -41,7 +41,10 @@ export default function Profile() {
     if (!phone) { setError("Enter a Ugandan number, like 0772 123456."); return; }
     run(async () => { await post("/me/payment-methods", { provider: form.provider, phone_number: phone, account_name: form.name.trim() }); setForm({ ...form, phone: "", name: "" }); });
   };
-  const cashOut = () => run(async () => { await post("/payouts", { payment_method_id: chosen }); setNotice("Cash-out requested. You'll get the money on your mobile money account once it's approved."); });
+  const cashOut = () => run(async () => {
+    await post("/payouts", { payment_method_id: chosen });
+    setNotice("Withdrawal request submitted! Your translations will undergo clinical review. Once reviews are successfully approved, your payment will be sent to your mobile money within 24 to 48 hours.");
+  });
 
   if (!bal) return <p className="muted">{error || "Loading…"}</p>;
   const hasPending = payouts.some((p) => p.status === "pending");
@@ -57,9 +60,14 @@ export default function Profile() {
         <p className="label">Ready to cash out</p>
         <p className="big">{ugx(bal.available_ugx)}</p>
         <p className="muted">
-          {hasPending ? "A cash-out is already waiting for payment."
+          {hasPending ? "A cash-out is currently pending review and payment."
             : short > 0 ? `Earn ${ugx(short)} more to reach the ${ugx(bal.min_cashout_ugx)} minimum.` : "You can cash out now."}
         </p>
+
+        <div className="cashout-timing-notice">
+          <strong>⏱️ Withdrawal Timeline:</strong> Once requested, your translations undergo clinical review for accuracy. If reviews are verified successfully, money is transferred to your mobile money account within <strong>24 to 48 hours</strong>.
+        </div>
+
         {methods.length > 0 && (
           <label>Send to
             <select value={chosen} onChange={(e) => setChosen(e.target.value)}>
@@ -72,6 +80,7 @@ export default function Profile() {
         {notice && <p className="ok" role="status">{notice}</p>}
         {error && <p className="error" role="alert">{error}</p>}
       </div>
+
 
       <dl className="stats">
         <div><dt>Total earned</dt><dd>{ugx(bal.total_earned_ugx)}</dd></div>
@@ -107,14 +116,22 @@ export default function Profile() {
       {payouts.length === 0 ? <p className="muted">No cash-outs yet.</p> : (
         <ul className="list">
           {payouts.map((p) => (
-            <li key={p.id} className="card row">
-              <div><strong>{ugx(p.amount_ugx)}</strong> to {NAMES[p.provider]} {p.phone_number}<br />
-                <span className="muted">{new Date(p.requested_at).toLocaleDateString("en-UG", { day: "numeric", month: "short", year: "numeric" })}</span></div>
+            <li key={p.id} className="card row" style={{ alignItems: "flex-start" }}>
+              <div>
+                <strong>{ugx(p.amount_ugx)}</strong> to {NAMES[p.provider]} {p.phone_number}<br />
+                <span className="muted">{new Date(p.requested_at).toLocaleDateString("en-UG", { day: "numeric", month: "short", year: "numeric" })}</span>
+                {p.status === "pending" && (
+                  <div className="hint" style={{ color: "var(--forest)", marginTop: "0.25rem", fontSize: "0.82rem" }}>
+                    ⏳ Under clinical review. Sent within 24–48 hours upon successful verification.
+                  </div>
+                )}
+              </div>
               <span className={`tag ${p.status}`}>{STATUS[p.status]}</span>
             </li>
           ))}
         </ul>
       )}
+
     </section>
   );
 }

@@ -14,6 +14,8 @@ export type MockUser = {
   is_active: boolean;
   created_at: string;
   validated_count: number;
+  verified_count: number;
+  accuracy_rate: number;
   total_earned_ugx: number;
   pending_ugx: number;
   paid_out_ugx: number;
@@ -28,6 +30,8 @@ const currentUser: MockUser = {
   is_active: true,
   created_at: "2026-09-01T08:00:00Z",
   validated_count: 24,
+  verified_count: 22,
+  accuracy_rate: 91.7,
   total_earned_ugx: 48000,
   pending_ugx: 0,
   paid_out_ugx: 40000,
@@ -43,6 +47,8 @@ let mockUsers: MockUser[] = [
     is_active: true,
     created_at: "2026-09-05T10:00:00Z",
     validated_count: 52,
+    verified_count: 50,
+    accuracy_rate: 96.2,
     total_earned_ugx: 104000,
     pending_ugx: 0,
     paid_out_ugx: 100000,
@@ -55,6 +61,8 @@ let mockUsers: MockUser[] = [
     is_active: true,
     created_at: "2026-09-12T14:30:00Z",
     validated_count: 85,
+    verified_count: 76,
+    accuracy_rate: 89.4,
     total_earned_ugx: 170000,
     pending_ugx: 45000,
     paid_out_ugx: 125000,
@@ -67,6 +75,8 @@ let mockUsers: MockUser[] = [
     is_active: true,
     created_at: "2026-09-15T09:15:00Z",
     validated_count: 41,
+    verified_count: 36,
+    accuracy_rate: 87.8,
     total_earned_ugx: 82000,
     pending_ugx: 0,
     paid_out_ugx: 75000,
@@ -79,6 +89,8 @@ let mockUsers: MockUser[] = [
     is_active: true,
     created_at: "2026-09-18T11:45:00Z",
     validated_count: 67,
+    verified_count: 48,
+    accuracy_rate: 71.6,
     total_earned_ugx: 134000,
     pending_ugx: 68000,
     paid_out_ugx: 60000,
@@ -160,7 +172,116 @@ let reviewQueue = [
   },
 ];
 
+let mockExportHistory: any[] = [
+  {
+    id: "exp-001",
+    exported_by_name: "Dr. Kizito Mayanja",
+    sentence_count: 150,
+    scope: "verified_only",
+    only_new: true,
+    file_name: "ekyama_dataset_verified_only_20261010_142010.csv",
+    created_at: "2026-10-10T14:20:10Z",
+  },
+  {
+    id: "exp-002",
+    exported_by_name: "Dr. Kizito Mayanja",
+    sentence_count: 75,
+    scope: "all_validated",
+    only_new: true,
+    file_name: "ekyama_dataset_all_validated_20261014_091522.csv",
+    created_at: "2026-10-14T09:15:22Z",
+  },
+];
+
+let mockAllSentences: any[] = [
+  {
+    id: 1,
+    noisy_english: "What symptoms are you feeling today?",
+    attempted: "Bubonerero ki bwe owulira leero?",
+    clean_lug: "Bubonero ki bw'owulira leero?",
+    difficulty: "easy",
+    validator_name: "Amina Nabukeera",
+    validator_email: "amina@example.com",
+    validated_at: "2026-10-09T10:00:00Z",
+    verified: true,
+    verified_by_name: "Dr. Sarah Namubiru",
+    verified_at: "2026-10-09T14:00:00Z",
+    exported_at: "2026-10-10T14:20:10Z",
+  },
+  {
+    id: 2,
+    noisy_english: "Take this syrup twice a day after lunch and dinner.",
+    attempted: "Nwa syrup eno emirundi ebiri oluvanyuma lwa lunch ne dinner.",
+    clean_lug: "Nywa eddagala lino ery'obusaale emirundi ebiri olunaku oluvannyuma lw'ekyemisana n'ekyeggulo.",
+    difficulty: "medium",
+    validator_name: "Paul Kato",
+    validator_email: "paul.kato@ekyama.health",
+    validated_at: "2026-10-10T11:00:00Z",
+    verified: true,
+    verified_by_name: "Dr. Sarah Namubiru",
+    verified_at: "2026-10-10T13:00:00Z",
+    exported_at: "2026-10-10T14:20:10Z",
+  },
+  {
+    id: 3,
+    noisy_english: "You need a blood test to check for malaria parasites.",
+    attempted: "Wetaga okukeberebwa omusaayi okulaba omusujja gw'ensiri.",
+    clean_lug: "Weetaaga okukeberebwa omusaayi okulaba obuwuka bw'omusujja gw'ensiri.",
+    difficulty: "medium",
+    validator_name: "Grace Alupo",
+    validator_email: "grace.alupo@soroti.med.ug",
+    validated_at: "2026-10-15T09:00:00Z",
+    verified: true,
+    verified_by_name: "Dr. Sarah Namubiru",
+    verified_at: "2026-10-15T11:30:00Z",
+    exported_at: null,
+  },
+  {
+    id: 4,
+    noisy_english: "The ultrasound shows normal fetal heartbeat and growth.",
+    attempted: "Ultrasound eraga omutima gw'omwana gukuba bulungi.",
+    clean_lug: "Ekifaananyi eky'ekyuma (ultrasound) kiraga ng'omutima gw'omwana gukuba bulungi era akula bulungi.",
+    difficulty: "hard",
+    validator_name: "Amina Nabukeera",
+    validator_email: "amina@example.com",
+    validated_at: "2026-10-16T14:20:00Z",
+    verified: true,
+    verified_by_name: "Dr. Sarah Namubiru",
+    verified_at: "2026-10-16T16:00:00Z",
+    exported_at: null,
+  },
+  {
+    id: 5,
+    noisy_english: "Drink oral rehydration salts solution with clean boiled water.",
+    attempted: "Nywa amazzi ga ORS ne amazzi amayonge.",
+    clean_lug: "Nywa eddagala ly'amazzi (ORS) erisanyusiddwa mu mazzi amafumbe amayonjo.",
+    difficulty: "medium",
+    validator_name: "Paul Kato",
+    validator_email: "paul.kato@ekyama.health",
+    validated_at: "2026-10-17T08:45:00Z",
+    verified: false,
+    verified_by_name: null,
+    verified_at: null,
+    exported_at: null,
+  },
+  {
+    id: 6,
+    noisy_english: "Avoid heavy manual labor for at least two weeks while the wound heals.",
+    attempted: "Wewale emirimu emizito okumala wiiki bbiri nga ebiwundu biwona.",
+    clean_lug: "Weewale emirimu gy'amaanyi emizito okumala ssabbiiti bbiri ng'ebbwa lye liziba.",
+    difficulty: "hard",
+    validator_name: "Grace Alupo",
+    validator_email: "grace.alupo@soroti.med.ug",
+    validated_at: "2026-10-17T15:10:00Z",
+    verified: false,
+    verified_by_name: null,
+    verified_at: null,
+    exported_at: null,
+  },
+];
+
 let pos = 0, earned = 48000, available = 8000, validated = 24;
+
 let methods: any[] = [
   { id: "m1", provider: "mtn", phone_number: "+256772123456", account_name: "Kizito Mayanja", is_default: true }
 ];
@@ -178,6 +299,8 @@ let adminPayouts: any[] = [
     phone_number: "+256782334455",
     account_name: "Amina Nabukeera",
     sentence_count: 22,
+    verified_count: 18,
+    accuracy_rate: 81.8,
     provider_reference: null,
     rejection_reason: null,
     processed_at: null,
@@ -194,6 +317,8 @@ let adminPayouts: any[] = [
     phone_number: "+256701889900",
     account_name: "Grace Alupo",
     sentence_count: 34,
+    verified_count: 24,
+    accuracy_rate: 70.6,
     provider_reference: null,
     rejection_reason: null,
     processed_at: null,
@@ -210,8 +335,11 @@ let adminPayouts: any[] = [
     phone_number: "+256755443322",
     account_name: "Paul Kato",
     sentence_count: 38,
+    verified_count: 35,
+    accuracy_rate: 92.1,
     provider_reference: "AIRTEL-908123-UG",
     rejection_reason: null,
+
     processed_at: "2026-10-12T16:30:00Z",
   },
 ];
@@ -400,6 +528,101 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     return json(target);
   }
 
+  if (cleanPath.startsWith("/admin/users/") && cleanPath.endsWith("/quality") && m === "GET") {
+    const parts = cleanPath.split("/");
+    const userId = parts[parts.length - 2];
+    const u = mockUsers.find((x) => x.id === userId);
+    if (!u) return json({ detail: "User not found" }, 404);
+
+    const userReviews = reviewQueue
+      .filter((s) => s.validated_by_id === userId || s.validator_name.toLowerCase() === u.full_name.toLowerCase())
+      .map((s) => ({
+        id: s.id,
+        noisy_english: s.noisy_english,
+        attempted: s.attempted,
+        clean_lug: s.clean_lug,
+        difficulty: s.difficulty,
+        reward_ugx: s.reward_ugx,
+        verified: s.verified,
+        verified_at: null,
+        verified_by_name: null,
+        validated_at: s.validated_at,
+        payout_id: null,
+        paid_status: false,
+      }));
+
+    const userAll = mockAllSentences
+      .filter((s) => s.validator_name.toLowerCase() === u.full_name.toLowerCase())
+      .map((s) => ({
+        id: s.id,
+        noisy_english: s.noisy_english,
+        attempted: s.attempted,
+        clean_lug: s.clean_lug,
+        difficulty: s.difficulty,
+        reward_ugx: 1000,
+        verified: s.verified,
+        verified_at: s.verified_at || null,
+        verified_by_name: s.verified_by_name || null,
+        validated_at: s.validated_at,
+        payout_id: null,
+        paid_status: s.exported_at !== null,
+      }));
+
+    const allSentences = [...userReviews, ...userAll];
+
+    const vCount = u.validated_count || (allSentences.length || 1);
+    const verCount = u.verified_count ?? allSentences.filter((s) => s.verified).length;
+    const pendingCount = Math.max(0, vCount - verCount);
+    const accRate = u.accuracy_rate ?? (vCount > 0 ? Math.round((verCount / vCount) * 1000) / 10 : 0);
+
+    return json({
+      id: u.id,
+      email: u.email,
+      full_name: u.full_name,
+      role: u.role,
+      is_active: u.is_active,
+      created_at: u.created_at,
+      validated_count: vCount,
+      verified_count: verCount,
+      pending_review_count: pendingCount,
+      accuracy_rate: accRate,
+      total_earned_ugx: u.total_earned_ugx,
+      pending_ugx: u.pending_ugx,
+      paid_out_ugx: u.paid_out_ugx,
+      recent_sentences: allSentences.length > 0 ? allSentences : [
+        {
+          id: 201,
+          noisy_english: "How long have you had this continuous cough and fever?",
+          attempted: "Omaze bbanga ki ng'olina ekikolwa n'omusujja?",
+          clean_lug: "Omaze ebbanga ki ng'olina ekikololo kino ekitazikiza wamu n'omusujja ogw'amaanyi?",
+          difficulty: "medium",
+          reward_ugx: 1100,
+          verified: true,
+          verified_at: "2026-10-14T11:00:00Z",
+          verified_by_name: "Dr. Sarah Namubiru",
+          validated_at: "2026-10-14T09:30:00Z",
+          payout_id: null,
+          paid_status: false,
+        },
+        {
+          id: 202,
+          noisy_english: "The patient needs immediate fluid replacement via IV drip.",
+          attempted: "Omulwadde yetaga amazzi mangu okuyita mu drip.",
+          clean_lug: "Omulwadde yeetaaga okwongerwamu amazzi mu mubiri amangwago ng'ayita mu kayupa (IV drip).",
+          difficulty: "hard",
+          reward_ugx: 1650,
+          verified: false,
+          verified_at: null,
+          verified_by_name: null,
+          validated_at: "2026-10-14T10:15:00Z",
+          payout_id: "po-101",
+          paid_status: false,
+        }
+      ],
+    });
+  }
+
+
   if (cleanPath === "/admin/payouts" && m === "GET") {
     return json(adminPayouts);
   }
@@ -424,6 +647,99 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     po.rejection_reason = body.reason || "Rejected by administrator";
     po.processed_at = new Date().toISOString();
     return json(po);
+  }
+
+  // ------------------------------------------------------------- Dataset Export endpoints
+  if (cleanPath === "/admin/export/stats" && m === "GET") {
+    const totalV = mockAllSentences.length;
+    const totalVer = mockAllSentences.filter((s) => s.verified).length;
+    const unexportedVer = mockAllSentences.filter((s) => s.verified && !s.exported_at).length;
+    const unexportedVal = mockAllSentences.filter((s) => !s.exported_at).length;
+    return json({
+      total_validated: totalV,
+      total_verified: totalVer,
+      unexported_verified: unexportedVer,
+      unexported_validated: unexportedVal,
+      last_export_at: mockExportHistory[0]?.created_at || null,
+      total_exports_count: mockExportHistory.length,
+      recent_exports: mockExportHistory,
+    });
+  }
+
+  if (cleanPath === "/admin/export/sentences.csv" && m === "GET") {
+    const queryStr = path.includes("?") ? path.split("?")[1] : "";
+    const params = new URLSearchParams(queryStr);
+    const scope = params.get("scope") || "verified_only";
+    const onlyNew = params.get("only_new") === "true";
+    const markExported = params.get("mark_exported") !== "false";
+
+    let matching = [...mockAllSentences];
+    if (scope === "verified_only") {
+      matching = matching.filter((s) => s.verified);
+    }
+    if (onlyNew) {
+      matching = matching.filter((s) => !s.exported_at);
+    }
+
+    const now = new Date().toISOString();
+    const tsStr = now.replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "_");
+    const filename = `ekyama_dataset_${scope}_${tsStr}.csv`;
+
+    if (markExported && matching.length > 0) {
+      matching.forEach((s) => {
+        s.exported_at = now;
+      });
+      mockExportHistory.unshift({
+        id: "exp-" + Date.now().toString(36),
+        exported_by_name: currentUser.full_name,
+        sentence_count: matching.length,
+        scope,
+        only_new: onlyNew,
+        file_name: filename,
+        created_at: now,
+      });
+    }
+
+    const headers = [
+      "sentence_id",
+      "english_prompt",
+      "initial_draft",
+      "validated_luganda",
+      "quality_status",
+      "difficulty",
+      "validator_name",
+      "validator_email",
+      "validated_at",
+      "verified_by_name",
+      "verified_at",
+      "exported_at",
+    ];
+    const csvRows = [headers.join(",")];
+    for (const r of matching) {
+      csvRows.push([
+        r.id,
+        JSON.stringify(r.noisy_english),
+        JSON.stringify(r.attempted),
+        JSON.stringify(r.clean_lug),
+        r.verified ? "verified" : "validated",
+        r.difficulty,
+        JSON.stringify(r.validator_name),
+        JSON.stringify(r.validator_email || ""),
+        r.validated_at,
+        JSON.stringify(r.verified_by_name || ""),
+        r.verified_at || "",
+        now,
+      ].join(","));
+    }
+
+    const csvText = "\ufeff" + csvRows.join("\r\n");
+    return new Response(csvText, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
   }
 
   // ------------------------------------------------------------- Review endpoints

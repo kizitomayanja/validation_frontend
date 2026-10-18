@@ -1,15 +1,60 @@
 import { useEffect, useState } from "react";
-import { AdminOverview, AdminPayout, AdminUser, api, patch, post, Role, Settings, ugx } from "../api";
+import { Link, useSearchParams } from "react-router-dom";
+import { AdminOverview, AdminPayout, AdminUser, api, DatasetExportStats, downloadExportCsv, patch, post, Role, Settings, ugx, UserQualityProfile } from "../api";
 
 export default function Admin() {
-  const [tab, setTab] = useState<"overview" | "payouts" | "users">("overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab") as any;
+  const initialTab = ["overview", "payouts", "users", "export"].includes(urlTab) ? urlTab : "overview";
+
+  const [tab, setTab] = useState<"overview" | "payouts" | "users" | "export">(initialTab);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [payouts, setPayouts] = useState<AdminPayout[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [exportStats, setExportStats] = useState<DatasetExportStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Cross-component user quality & review inspection state
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [qualityProfile, setQualityProfile] = useState<UserQualityProfile | null>(null);
+  const [loadingQuality, setLoadingQuality] = useState(false);
+  const [qualityError, setQualityError] = useState<string | null>(null);
+
+  // Sync tab with URL search parameter
+  useEffect(() => {
+    const t = searchParams.get("tab") as any;
+    if (t && ["overview", "payouts", "users", "export"].includes(t) && t !== tab) {
+      setTab(t);
+    }
+  }, [searchParams]);
+
+  const switchTab = (newTab: "overview" | "payouts" | "users" | "export") => {
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
+
+  const handleInspectUser = async (userId: string) => {
+    try {
+      setSelectedUserId(userId);
+      setLoadingQuality(true);
+      setQualityError(null);
+      const data = await api<UserQualityProfile>(`/admin/users/${userId}/quality`);
+      setQualityProfile(data);
+    } catch (err: any) {
+      setQualityError(err?.message || "Failed to load contributor quality profile.");
+    } finally {
+      setLoadingQuality(false);
+    }
+  };
+
+  const handleCloseQualityModal = () => {
+    setSelectedUserId(null);
+    setQualityProfile(null);
+    setQualityError(null);
+  };
 
   // Budget configuration form state
   const [editingBudget, setEditingBudget] = useState(false);
@@ -28,26 +73,36 @@ export default function Admin() {
   const [userSearch, setUserSearch] = useState("");
   const [userUpdatingId, setUserUpdatingId] = useState<string | null>(null);
 
+  // Dataset export form state
+  const [exportScope, setExportScope] = useState<"verified_only" | "all_validated">("verified_only");
+  const [exportOnlyNew, setExportOnlyNew] = useState(true);
+  const [exportMarkExported, setExportMarkExported] = useState(true);
+  const [downloadingExport, setDownloadingExport] = useState(false);
+
   const loadData = async () => {
     try {
       setLoading(true);
+
       setError(null);
-      const [ov, st, po, us] = await Promise.all([
+      const [ov, st, po, us, es] = await Promise.all([
         api<AdminOverview>("/admin/overview"),
         api<Settings>("/admin/settings"),
         api<AdminPayout[]>("/admin/payouts"),
         api<AdminUser[]>("/admin/users"),
+        api<DatasetExportStats>("/admin/export/stats").catch(() => null),
       ]);
       setOverview(ov);
       setSettings(st);
       setPayouts(po);
       setUsers(us);
+      if (es) setExportStats(es);
 
       setBudgetCapInput(st.max_budget_ugx !== null ? String(st.max_budget_ugx) : "");
       setRateInput(String(st.rate_ugx));
       setMinCashoutInput(String(st.min_cashout_ugx));
     } catch (err: any) {
       setError(err?.message || "Failed to load admin dashboard data.");
+
     } finally {
       setLoading(false);
     }
@@ -179,7 +234,24 @@ export default function Admin() {
     }
   };
 
+  const handleDownloadDataset = async () => {
+    try {
+      setDownloadingExport(true);
+      setError(null);
+      setSuccess(null);
+      const res = await downloadExportCsv(exportScope, exportOnlyNew, exportMarkExported);
+      setSuccess(`Dataset CSV successfully downloaded (${res.filename}).`);
+      const es = await api<DatasetExportStats>("/admin/export/stats").catch(() => null);
+      if (es) setExportStats(es);
+    } catch (err: any) {
+      setError(err?.message || "Failed to download dataset export.");
+    } finally {
+      setDownloadingExport(false);
+    }
+  };
+
   const filteredPayouts = payouts.filter((p) => {
+
     if (payoutFilter === "all") return true;
     return p.status === payoutFilter;
   });
@@ -344,22 +416,31 @@ export default function Admin() {
       <div className="admin-tabs">
         <button
           className={`tab-btn ${tab === "overview" ? "active" : ""}`}
-          onClick={() => setTab("overview")}
+          onClick={() => switchTab("overview")}
         >
           📊 Campaign Overview
         </button>
         <button
           className={`tab-btn ${tab === "payouts" ? "active" : ""}`}
-          onClick={() => setTab("payouts")}
+          onClick={() => switchTab("payouts")}
         >
           💸 Payout Requests
           {pendingPayoutCount > 0 && <span className="counter-badge">{pendingPayoutCount}</span>}
         </button>
         <button
           className={`tab-btn ${tab === "users" ? "active" : ""}`}
-          onClick={() => setTab("users")}
+          onClick={() => switchTab("users")}
         >
           👥 User Roles & Access ({users.length})
+        </button>
+        <button
+          className={`tab-btn ${tab === "export" ? "active" : ""}`}
+          onClick={() => switchTab("export")}
+        >
+          📥 Dataset Export
+          {exportStats && exportStats.unexported_verified > 0 && (
+            <span className="counter-badge">{exportStats.unexported_verified} new</span>
+          )}
         </button>
       </div>
 
@@ -401,8 +482,77 @@ export default function Admin() {
               <p className="hint" style={{ marginTop: "0.5rem" }}>Total accounts: {overview.total_users}</p>
             </div>
           </div>
+
+          {/* Quality & Review Oversight in Campaign Overview */}
+          <div className="card" style={{ marginTop: "1.5rem" }}>
+            <div className="row" style={{ alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Contributor Quality &amp; Review Oversight</h2>
+                <p className="hint">Audit translation accuracy and jump directly into reviewing contributor submissions.</p>
+              </div>
+              <Link to="/review" className="primary-btn small-btn" style={{ textDecoration: "none" }}>
+                🩺 Open Review Station →
+              </Link>
+            </div>
+            <div className="table-container">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Contributor</th>
+                    <th>Role</th>
+                    <th>Validated</th>
+                    <th>Clinical Accuracy</th>
+                    <th>Earned</th>
+                    <th>Review Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.slice(0, 5).map((u) => (
+                    <tr key={u.id}>
+                      <td>
+                        <button
+                          className="link-style-btn"
+                          onClick={() => handleInspectUser(u.id)}
+                          title="Click to view detailed translation reviews and accuracy breakdown"
+                        >
+                          <strong>{u.full_name}</strong> ↗
+                        </button>
+                        <div className="hint">{u.email}</div>
+                      </td>
+                      <td><span className={`role-tag ${u.role}`}>{u.role}</span></td>
+                      <td>{u.validated_count}</td>
+                      <td>
+                        <strong>{u.accuracy_rate ?? 0}%</strong>
+                        <span className="hint" style={{ marginLeft: "0.35rem" }}>({u.verified_count ?? 0} verified)</span>
+                      </td>
+                      <td><strong>{ugx(u.total_earned_ugx)}</strong></td>
+                      <td>
+                        <div className="actions" style={{ marginTop: 0 }}>
+                          <Link
+                            to={`/review?username=${encodeURIComponent(u.email || u.full_name)}`}
+                            className="small-btn inspect-direct-btn"
+                            title="Direct Review: view and verify this contributor's queue in the review station"
+                          >
+                            🩺 Direct Review
+                          </Link>
+                          <button
+                            className="small-btn ghost-btn"
+                            onClick={() => handleInspectUser(u.id)}
+                            title="View accuracy profile & submitted sentences"
+                          >
+                            📊 Quality
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
+
 
       {/* TAB 2: MOBILE MONEY PAYOUT REQUESTS */}
       {tab === "payouts" && (
@@ -459,8 +609,21 @@ export default function Admin() {
                     <tr key={p.id}>
                       <td className="hint">{new Date(p.requested_at).toLocaleDateString()} {new Date(p.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                       <td>
-                        <strong>{p.user_name}</strong>
+                        <button
+                          className="link-style-btn"
+                          onClick={() => handleInspectUser(p.user_id)}
+                          title="Click to view detailed translation reviews and accuracy breakdown"
+                        >
+                          <strong>{p.user_name}</strong> ↗
+                        </button>
                         <div className="hint">{p.user_email}</div>
+                        {p.accuracy_rate !== undefined && (
+                          <div style={{ marginTop: "0.2rem" }}>
+                            <span className={`accuracy-mini-pill ${(p.accuracy_rate ?? 0) >= 80 ? "high" : "med"}`}>
+                              {p.accuracy_rate}% accuracy ({p.verified_count ?? 0}/{p.sentence_count} verified)
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td><strong>{ugx(p.amount_ugx)}</strong></td>
                       <td>
@@ -468,7 +631,10 @@ export default function Admin() {
                         <div>{p.phone_number}</div>
                         <div className="hint">{p.account_name}</div>
                       </td>
-                      <td>{p.sentence_count}</td>
+                      <td>
+                        <strong>{p.sentence_count}</strong>
+                        <div className="hint">{Math.max(0, p.sentence_count - (p.verified_count ?? 0))} pending QA</div>
+                      </td>
                       <td>
                         <span className={`tag ${p.status}`}>{p.status}</span>
                       </td>
@@ -501,33 +667,70 @@ export default function Admin() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="actions" style={{ marginTop: 0 }}>
-                                <button
-                                  className="small-btn primary-btn"
-                                  onClick={() => { setActivePayoutAction({ id: p.id, action: "pay" }); setActionInput(""); }}
-                                >
-                                  ✓ Mark Paid
-                                </button>
-                                <button
-                                  className="small-btn danger-btn"
-                                  onClick={() => { setActivePayoutAction({ id: p.id, action: "reject" }); setActionInput(""); }}
-                                >
-                                  ✕ Reject
-                                </button>
+                              <div>
+                                <div className="actions" style={{ marginTop: 0 }}>
+                                  <button
+                                    className="small-btn primary-btn"
+                                    onClick={() => { setActivePayoutAction({ id: p.id, action: "pay" }); setActionInput(""); }}
+                                  >
+                                    ✓ Mark Paid
+                                  </button>
+                                  <button
+                                    className="small-btn danger-btn"
+                                    onClick={() => { setActivePayoutAction({ id: p.id, action: "reject" }); setActionInput(""); }}
+                                  >
+                                    ✕ Reject
+                                  </button>
+                                </div>
+                                <div className="actions" style={{ marginTop: "0.35rem" }}>
+                                  <Link
+                                    to={`/review?username=${encodeURIComponent(p.user_email || p.user_name)}`}
+                                    className="small-btn inspect-direct-btn"
+                                    title="Direct Review: review this validator's pending sentences before authorizing payout"
+                                  >
+                                    🩺 Direct Review
+                                  </Link>
+                                  <button
+                                    className="small-btn ghost-btn"
+                                    onClick={() => handleInspectUser(p.user_id)}
+                                    title="Inspect submitted translations and accuracy details"
+                                  >
+                                    📊 Quality
+                                  </button>
+                                </div>
                               </div>
                             )}
                           </div>
                         ) : p.status === "paid" ? (
-                          <div className="hint">
-                            <strong>Tx:</strong> {p.provider_reference || "N/A"}
-                            {p.processed_at && <div>{new Date(p.processed_at).toLocaleDateString()}</div>}
+                          <div>
+                            <div className="hint">
+                              <strong>Tx:</strong> {p.provider_reference || "N/A"}
+                              {p.processed_at && <div>{new Date(p.processed_at).toLocaleDateString()}</div>}
+                            </div>
+                            <button
+                              className="link-style-btn hint"
+                              style={{ marginTop: "0.35rem", fontSize: "0.82rem" }}
+                              onClick={() => handleInspectUser(p.user_id)}
+                            >
+                              📊 View Quality Profile
+                            </button>
                           </div>
                         ) : (
-                          <div className="hint danger-text">
-                            <strong>Reason:</strong> {p.rejection_reason || "Unspecified"}
+                          <div>
+                            <div className="hint danger-text">
+                              <strong>Reason:</strong> {p.rejection_reason || "Unspecified"}
+                            </div>
+                            <button
+                              className="link-style-btn hint"
+                              style={{ marginTop: "0.35rem", fontSize: "0.82rem" }}
+                              onClick={() => handleInspectUser(p.user_id)}
+                            >
+                              📊 View Quality Profile
+                            </button>
                           </div>
                         )}
                       </td>
+
                     </tr>
                   ))}
                 </tbody>
@@ -556,18 +759,25 @@ export default function Admin() {
                 <tr>
                   <th>Contributor</th>
                   <th>System Role</th>
+                  <th>Clinical Accuracy</th>
                   <th>Validated</th>
                   <th>Total Earned</th>
                   <th>Paid Out</th>
                   <th>Status</th>
-                  <th>Joined</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((u) => (
                   <tr key={u.id} className={!u.is_active ? "row-deactivated" : ""}>
                     <td>
-                      <strong>{u.full_name}</strong>
+                      <button
+                        className="link-style-btn"
+                        onClick={() => handleInspectUser(u.id)}
+                        title="Click to view detailed quality profile and submitted translations"
+                      >
+                        <strong>{u.full_name}</strong> ↗
+                      </button>
                       <div className="hint">{u.email}</div>
                     </td>
                     <td>
@@ -582,6 +792,10 @@ export default function Admin() {
                         <option value="admin">Admin (Total Oversight)</option>
                       </select>
                     </td>
+                    <td>
+                      <strong>{u.accuracy_rate ?? 0}%</strong>
+                      <div className="hint">{u.verified_count ?? 0} of {u.validated_count} verified</div>
+                    </td>
                     <td>{u.validated_count}</td>
                     <td><strong>{ugx(u.total_earned_ugx)}</strong></td>
                     <td>{ugx(u.paid_out_ugx)}</td>
@@ -594,14 +808,331 @@ export default function Admin() {
                         {u.is_active ? "Deactivate" : "Activate"}
                       </button>
                     </td>
-                    <td className="hint">{new Date(u.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <div className="actions" style={{ marginTop: 0 }}>
+                        <Link
+                          to={`/review?username=${encodeURIComponent(u.email || u.full_name)}`}
+                          className="small-btn inspect-direct-btn"
+                          title="Direct Review: view and verify this contributor's queue in the review station"
+                        >
+                          🩺 Review Work
+                        </Link>
+                        <button
+                          className="small-btn ghost-btn"
+                          onClick={() => handleInspectUser(u.id)}
+                          title="View accuracy profile & submitted sentences"
+                        >
+                          📊 Quality
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: DATASET EXTRACTION & CSV EXPORT */}
+      {tab === "export" && (
+        <div className="tab-pane">
+          <div className="overview-kpi-grid">
+            <div className="card kpi-card">
+              <h2>New Verified for AI Training</h2>
+              <p className="kpi-number" style={{ color: "var(--color-primary, #1e5a43)" }}>
+                {exportStats?.unexported_verified ?? 0}
+              </p>
+              <p className="hint">Verified sentences ready for export (not yet extracted)</p>
+            </div>
+
+            <div className="card kpi-card">
+              <h2>Total Verified Corpus</h2>
+              <p className="kpi-number">{exportStats?.total_verified ?? 0}</p>
+              <p className="hint">Passed second-pass clinical review</p>
+            </div>
+
+            <div className="card kpi-card">
+              <h2>Total Validated Corpus</h2>
+              <p className="kpi-number">{exportStats?.total_validated ?? 0}</p>
+              <p className="hint">All sentences translated by contributors</p>
+            </div>
+
+            <div className="card kpi-card">
+              <h2>Last Dataset Export</h2>
+              <p className="kpi-number" style={{ fontSize: "1.1rem", marginTop: "0.5rem" }}>
+                {exportStats?.last_export_at ? new Date(exportStats.last_export_at).toLocaleDateString() : "Never"}
+              </p>
+              <p className="hint">
+                {exportStats?.last_export_at ? new Date(exportStats.last_export_at).toLocaleTimeString() : "No prior exports"}
+              </p>
+            </div>
+          </div>
+
+          <div className="card export-configuration-card" style={{ marginTop: "1.5rem" }}>
+            <div className="export-card-header">
+              <div>
+                <h2>Extract Dataset for Hospital AI Training (CSV)</h2>
+                <p className="hint">
+                  Download bilingual clinical dialogues (English &amp; Luganda) formatted for fine-tuning offline hospital AI models.
+                </p>
+              </div>
+            </div>
+
+            <div className="export-form-section" style={{ marginTop: "1.25rem" }}>
+              <div className="export-section-title">1. Quality Scope</div>
+              <div className="export-radio-group">
+                <label className={`export-radio-card ${exportScope === "verified_only" ? "selected" : ""}`}>
+                  <input
+                    type="radio"
+                    name="exportScope"
+                    value="verified_only"
+                    checked={exportScope === "verified_only"}
+                    onChange={() => setExportScope("verified_only")}
+                  />
+                  <div className="radio-content">
+                    <strong>Verified Translations Only (Recommended for AI Training)</strong>
+                    <span className="hint">
+                      Includes only translations reviewed and certified by qualified medical/linguistic reviewers.
+                    </span>
+                  </div>
+                </label>
+
+                <label className={`export-radio-card ${exportScope === "all_validated" ? "selected" : ""}`}>
+                  <input
+                    type="radio"
+                    name="exportScope"
+                    value="all_validated"
+                    checked={exportScope === "all_validated"}
+                    onChange={() => setExportScope("all_validated")}
+                  />
+                  <div className="radio-content">
+                    <strong>All Validated Translations</strong>
+                    <span className="hint">
+                      Includes all submitted translations, including those currently pending clinical QA review.
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="export-form-section" style={{ marginTop: "1.5rem" }}>
+              <div className="export-section-title">2. Export Options &amp; State Tracking</div>
+              <div className="export-checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={exportOnlyNew}
+                    onChange={(e) => setExportOnlyNew(e.target.checked)}
+                  />
+                  <div>
+                    <strong>Export only new sentences since last export</strong>
+                    <div className="hint">
+                      Prevents duplicate training pairs across model iterations by selecting only sentences without a prior export timestamp.
+                    </div>
+                  </div>
+                </label>
+
+                <label className="checkbox-label" style={{ marginTop: "0.75rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={exportMarkExported}
+                    onChange={(e) => setExportMarkExported(e.target.checked)}
+                  />
+                  <div>
+                    <strong>Mark extracted sentences as exported</strong>
+                    <div className="hint">
+                      Updates the sentence record timestamp so subsequent "new only" exports will only extract future translations.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="export-action-bar" style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--color-border, #e5e7eb)" }}>
+              <button
+                type="button"
+                className="primary-btn"
+                style={{ padding: "0.75rem 1.75rem", fontSize: "1rem" }}
+                onClick={handleDownloadDataset}
+                disabled={downloadingExport}
+              >
+                {downloadingExport ? "Generating CSV Stream…" : "⬇️ Download CSV Dataset"}
+              </button>
+              <span className="hint" style={{ marginLeft: "1rem" }}>
+                Target: <strong>{exportScope === "verified_only" ? (exportOnlyNew ? (exportStats?.unexported_verified ?? 0) : (exportStats?.total_verified ?? 0)) : (exportOnlyNew ? (exportStats?.unexported_validated ?? 0) : (exportStats?.total_validated ?? 0))} sentences</strong> ready for extraction.
+              </span>
+            </div>
+          </div>
+
+          {/* Past Exports Audit History */}
+          <div className="card table-container" style={{ marginTop: "1.5rem" }}>
+            <h2 style={{ padding: "1rem 1rem 0.5rem" }}>Dataset Export History</h2>
+            {exportStats?.recent_exports && exportStats.recent_exports.length > 0 ? (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Date &amp; Time</th>
+                    <th>Exported By</th>
+                    <th>Sentence Count</th>
+                    <th>Scope</th>
+                    <th>Filter</th>
+                    <th>File Name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {exportStats.recent_exports.map((exp) => (
+                    <tr key={exp.id}>
+                      <td className="hint">{new Date(exp.created_at).toLocaleString()}</td>
+                      <td><strong>{exp.exported_by_name}</strong></td>
+                      <td><strong>{exp.sentence_count.toLocaleString()}</strong></td>
+                      <td>
+                        <span className={`status-pill ${exp.scope === "verified_only" ? "status-paid" : "status-pending"}`}>
+                          {exp.scope === "verified_only" ? "Verified QA Only" : "All Validated"}
+                        </span>
+                      </td>
+                      <td className="hint">{exp.only_new ? "New Delta Only" : "Full Cumulative"}</td>
+                      <td className="mono" style={{ fontSize: "0.85rem" }}>{exp.file_name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="hint center" style={{ padding: "1.5rem" }}>
+                No past dataset exports recorded yet. When you download a dataset, an audit log will be retained here.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONTRIBUTOR QUALITY & TRANSLATION REVIEWS DRILLDOWN */}
+      {selectedUserId && (
+        <div className="modal-backdrop" onClick={handleCloseQualityModal}>
+          <div className="modal-dialog quality-profile-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>Contributor Quality &amp; Translation Oversight</h2>
+                <p className="hint">Audit translation accuracy and verify clinical quality directly.</p>
+              </div>
+              <button className="ghost close-modal-btn" onClick={handleCloseQualityModal}>✕</button>
+            </div>
+
+            {loadingQuality && <p className="center muted">Loading contributor review profile…</p>}
+            {qualityError && <p className="error center">{qualityError}</p>}
+
+            {qualityProfile && (
+              <div className="modal-body">
+                {/* Contributor Profile Header */}
+                <div className="quality-user-meta">
+                  <div>
+                    <h3>{qualityProfile.full_name}</h3>
+                    <p className="hint">{qualityProfile.email} • Joined {new Date(qualityProfile.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="user-meta-tags">
+                    <span className={`role-tag ${qualityProfile.role}`}>{qualityProfile.role}</span>
+                    <span className={`status-pill ${qualityProfile.is_active ? "status-paid" : "status-pending"}`}>
+                      {qualityProfile.is_active ? "Active Account" : "Deactivated"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Accuracy & Quality KPI Grid */}
+                <div className="quality-kpi-grid">
+                  <div className="quality-kpi-card">
+                    <span className="quality-kpi-label">Clinical Accuracy</span>
+                    <span className={`quality-kpi-val ${qualityProfile.accuracy_rate >= 80 ? "val-high" : "val-med"}`}>
+                      {qualityProfile.accuracy_rate}%
+                    </span>
+                    <span className="hint">{qualityProfile.verified_count} of {qualityProfile.validated_count} verified</span>
+                  </div>
+                  <div className="quality-kpi-card">
+                    <span className="quality-kpi-label">Awaiting QA</span>
+                    <span className="quality-kpi-val val-warn">{qualityProfile.pending_review_count}</span>
+                    <span className="hint">In clinical review queue</span>
+                  </div>
+                  <div className="quality-kpi-card">
+                    <span className="quality-kpi-label">Total Earned</span>
+                    <span className="quality-kpi-val">{ugx(qualityProfile.total_earned_ugx)}</span>
+                    <span className="hint">Paid: {ugx(qualityProfile.paid_out_ugx)}</span>
+                  </div>
+                </div>
+
+                {/* Direct Review Station CTA */}
+                <div className="quality-cta-banner">
+                  <div>
+                    <strong>Direct Clinical Review for {qualityProfile.full_name}</strong>
+                    <div className="hint">
+                      Jump straight into the review station pre-filtered to this contributor to verify or edit their translations.
+                    </div>
+                  </div>
+                  <Link
+                    to={`/review?username=${encodeURIComponent(qualityProfile.email || qualityProfile.full_name)}`}
+                    className="primary-btn small-btn"
+                    style={{ whiteSpace: "nowrap", textDecoration: "none" }}
+                  >
+                    🩺 Open Direct Review Station →
+                  </Link>
+                </div>
+
+                {/* Submitted Sentences List */}
+                <div className="quality-sentences-section" style={{ marginTop: "1.25rem" }}>
+                  <h4 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem" }}>
+                    Submitted Translations ({qualityProfile.recent_sentences.length})
+                  </h4>
+                  {qualityProfile.recent_sentences.length === 0 ? (
+                    <p className="hint center muted" style={{ padding: "1.5rem" }}>
+                      No translations recorded for this contributor yet.
+                    </p>
+                  ) : (
+                    <div className="table-container" style={{ maxHeight: "17rem", overflowY: "auto" }}>
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>English Prompt</th>
+                            <th>Validated Luganda</th>
+                            <th>Difficulty</th>
+                            <th>Clinical QA Status</th>
+                            <th>Reward</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {qualityProfile.recent_sentences.map((s) => (
+                            <tr key={s.id}>
+                              <td><strong>#{s.id}</strong></td>
+                              <td style={{ maxWidth: "16rem", fontSize: "0.85rem" }}>{s.noisy_english}</td>
+                              <td style={{ maxWidth: "18rem", fontSize: "0.85rem" }}>
+                                <strong>{s.clean_lug}</strong>
+                              </td>
+                              <td><span className="hint">{s.difficulty}</span></td>
+                              <td>
+                                {s.verified ? (
+                                  <span className="status-pill status-paid" title={`Verified by ${s.verified_by_name || 'Qualified Reviewer'}`}>
+                                    ✓ Verified
+                                  </span>
+                                ) : (
+                                  <span className="status-pill status-pending">
+                                    ⏳ Awaiting QA
+                                  </span>
+                                )}
+                              </td>
+                              <td>{ugx(s.reward_ugx)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
+
 }
+

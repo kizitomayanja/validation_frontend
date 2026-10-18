@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, post, ReviewSentence, ReviewValidator, ugx } from "../api";
 
 export default function Review() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryUser = searchParams.get("username") || searchParams.get("validator") || "";
+
   const [queue, setQueue] = useState<ReviewSentence[]>([]);
   const [validators, setValidators] = useState<ReviewValidator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -9,14 +13,23 @@ export default function Review() {
   const [success, setSuccess] = useState<string | null>(null);
 
   // Review by specific username / validator filter
-  const [selectedUsername, setSelectedUsername] = useState<string>("");
-  const [searchInput, setSearchInput] = useState<string>("");
+  const [selectedUsername, setSelectedUsername] = useState<string>(queryUser);
+  const [searchInput, setSearchInput] = useState<string>(queryUser);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [editedLuganda, setEditedLuganda] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Sync state if searchParams change externally (e.g. browser navigation or deep link)
+  useEffect(() => {
+    const q = searchParams.get("username") || searchParams.get("validator") || "";
+    if (q !== selectedUsername) {
+      setSelectedUsername(q);
+      setSearchInput(q);
+    }
+  }, [searchParams]);
 
   const loadValidators = async () => {
     try {
@@ -56,17 +69,30 @@ export default function Review() {
   const handleSelectValidator = (username: string) => {
     setSelectedUsername(username);
     setSearchInput(username);
+    if (username) {
+      setSearchParams({ username });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    setSelectedUsername(searchInput.trim());
+    const trimmed = searchInput.trim();
+    setSelectedUsername(trimmed);
+    if (trimmed) {
+      setSearchParams({ username: trimmed });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const handleClearFilter = () => {
     setSelectedUsername("");
     setSearchInput("");
+    setSearchParams({});
   };
+
 
   const currentSentence = queue[currentIndex] || null;
 
@@ -141,8 +167,34 @@ export default function Review() {
 
   return (
     <div className="review-container">
+      {/* Targeted Contributor Direct Review Context Bar */}
+      {selectedUsername && (
+        <div className="review-context-banner">
+          <div className="context-left">
+            <span className="direct-badge">Direct Review Mode</span>
+            <span className="context-user-label">Auditing submissions for:</span>
+            <strong>{selectedUsername}</strong>
+            <span className="context-count-tag">
+              ({queue.length} {queue.length === 1 ? "sentence" : "sentences"} waiting)
+            </span>
+          </div>
+          <div className="context-actions">
+            <Link to="/admin?tab=payouts" className="small-btn ghost-btn" style={{ textDecoration: "none" }}>
+              ← Return to Payout Requests
+            </Link>
+            <Link to="/admin?tab=users" className="small-btn ghost-btn" style={{ textDecoration: "none" }}>
+              ← Return to User Roles
+            </Link>
+            <button className="link clear-filter-btn" onClick={handleClearFilter} style={{ fontSize: "0.85rem" }}>
+              Clear Filter
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="review-header">
+
         <div>
           <h1>Clinical & Linguistic Review</h1>
           <p className="hint">
