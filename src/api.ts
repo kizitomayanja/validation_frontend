@@ -46,6 +46,8 @@ export type AdminUser = {
   is_active: boolean;
   created_at: string;
   validated_count: number;
+  verified_count?: number;
+  accuracy_rate?: number;
   total_earned_ugx: number;
   pending_ugx: number;
   paid_out_ugx: number;
@@ -56,10 +58,45 @@ export type AdminPayout = Payout & {
   user_name: string;
   user_email: string;
   sentence_count: number;
+  verified_count?: number;
+  accuracy_rate?: number;
   provider_reference?: string | null;
   rejection_reason?: string | null;
   processed_at?: string | null;
 };
+
+export type UserSentenceDetail = {
+  id: number;
+  noisy_english: string;
+  attempted: string;
+  clean_lug: string;
+  difficulty: "easy" | "medium" | "hard";
+  reward_ugx: number;
+  verified: boolean;
+  verified_at: string | null;
+  verified_by_name: string | null;
+  validated_at: string;
+  payout_id: string | null;
+  paid_status: boolean;
+};
+
+export type UserQualityProfile = {
+  id: string;
+  email: string;
+  full_name: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+  validated_count: number;
+  verified_count: number;
+  pending_review_count: number;
+  accuracy_rate: number;
+  total_earned_ugx: number;
+  pending_ugx: number;
+  paid_out_ugx: number;
+  recent_sentences: UserSentenceDetail[];
+};
+
 
 export type ReviewSentence = {
   id: number;
@@ -70,17 +107,80 @@ export type ReviewSentence = {
   reward_ugx: number;
   validated_by_id: string;
   validator_name: string;
+  validator_email?: string;
   validated_at: string;
   verified: boolean;
 };
 
+export type ReviewValidator = {
+  id: string;
+  name: string;
+  email: string;
+  count: number;
+};
+
+export type DatasetExportHistory = {
+  id: string;
+  exported_by_name: string;
+  sentence_count: number;
+  scope: "verified_only" | "all_validated";
+  only_new: boolean;
+  file_name: string;
+  created_at: string;
+};
+
+export type DatasetExportStats = {
+  total_validated: number;
+  total_verified: number;
+  unexported_verified: number;
+  unexported_validated: number;
+  last_export_at: string | null;
+  total_exports_count: number;
+  recent_exports: DatasetExportHistory[];
+};
+
+export type TicketCategory = "clinical_terminology" | "review_dispute" | "payout_issue" | "role_request" | "general";
+export type TicketStatus = "open" | "in_progress" | "resolved";
+export type TargetRole = "reviewer" | "admin";
+
+export type TicketMessage = {
+  id: string;
+  ticket_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: Role;
+  message: string;
+  created_at: string;
+};
+
+export type InquiryTicket = {
+  id: string;
+  author_id: string;
+  author_name: string;
+  author_email: string;
+  author_role: Role;
+  category: TicketCategory;
+  target_role: TargetRole;
+  subject: string;
+  status: TicketStatus;
+  sentence_id?: number | null;
+  payout_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  last_message_preview: string;
+  messages?: TicketMessage[];
+};
+
+export const IS_TEST_MODE = import.meta.env.VITE_TEST_MODE === "true" || import.meta.env.MODE === "test";
 const BASE = String(import.meta.env.VITE_API_URL ?? import.meta.env.MY_PREF_API_URL ?? "http://localhost:8000").trim().replace(/\/+$/, "");
-const MOCK = import.meta.env.VITE_USE_MOCK === "true" || import.meta.env.MY_PREF_USE_MOCK === "true";
-const RT = "vp_refresh";
+const MOCK = IS_TEST_MODE || import.meta.env.VITE_USE_MOCK === "true" || import.meta.env.MY_PREF_USE_MOCK === "true";
+const RT = IS_TEST_MODE ? "vp_test_refresh" : "vp_refresh";
 let access: string | null = null;
 
 // Multi-tab channel to prevent replay of rotated refresh tokens across open tabs
-const authChannel = typeof window !== "undefined" && "BroadcastChannel" in window ? new BroadcastChannel("vp_auth") : null;
+const authChannelName = IS_TEST_MODE ? "vp_test_auth" : "vp_auth";
+const authChannel = typeof window !== "undefined" && "BroadcastChannel" in window ? new BroadcastChannel(authChannelName) : null;
 if (authChannel) {
   authChannel.onmessage = (event) => {
     if (event.data?.type === "REFRESHED" && event.data?.access) {
@@ -161,3 +261,39 @@ export const post = <T = void>(path: string, body?: object) => api<T>(path, { me
 export const patch = <T = void>(path: string, body?: object) => api<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined });
 export const del = <T = void>(path: string) => api<T>(path, { method: "DELETE" });
 export const ugx = (n: number) => `UGX ${n.toLocaleString("en-UG")}`;
+
+export async function downloadExportCsv(
+  scope: "verified_only" | "all_validated",
+  onlyNew: boolean,
+  markExported: boolean
+): Promise<{ filename: string }> {
+  const query = new URLSearchParams({
+    scope,
+    only_new: String(onlyNew),
+    mark_exported: String(markExported),
+  });
+  const path = `/admin/export/sentences.csv?${query.toString()}`;
+  let res = await raw(path, { method: "GET" });
+  if (res.status === 401 && (await refresh())) res = await raw(path, { method: "GET" });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, typeof e.detail === "string" ? e.detail : "Failed to download dataset CSV.");
+  }
+
+  const disposition = res.headers.get("Content-Disposition");
+  const filenameMatch = disposition && /filename="?([^";]+)"?/.exec(disposition);
+  const filename = filenameMatch ? filenameMatch[1] : `ekyama_dataset_${scope}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+
+  return { filename };
+}
+

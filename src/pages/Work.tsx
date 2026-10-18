@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, post, ugx, type Sentence } from "../api";
 
 const CLAIM_SECONDS = 15 * 60; // 15-minute claim lease
@@ -181,6 +182,13 @@ export default function Work() {
               <button className="ghost" onClick={skip} disabled={state === "saving"}>
                 Skip sentence
               </button>
+              <Link
+                to={`/inquiries?category=clinical_terminology&sentence_id=${s.id}`}
+                className="doctor-inquiry-btn"
+                title="Unsure of clinical terminology or diagnosis phrasing? Ask a qualified doctor reviewer."
+              >
+                🩺 Ask a Doctor
+              </Link>
             </div>
           </article>
         </div>

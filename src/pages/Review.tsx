@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
-import { api, post, ReviewSentence, ugx } from "../api";
+import { Link, useSearchParams } from "react-router-dom";
+import { api, post, ReviewSentence, ReviewValidator, ugx } from "../api";
 
 export default function Review() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryUser = searchParams.get("username") || searchParams.get("validator") || "";
+
   const [queue, setQueue] = useState<ReviewSentence[]>([]);
+  const [validators, setValidators] = useState<ReviewValidator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Review by specific username / validator filter
+  const [selectedUsername, setSelectedUsername] = useState<string>(queryUser);
+  const [searchInput, setSearchInput] = useState<string>(queryUser);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [editedLuganda, setEditedLuganda] = useState("");
@@ -13,16 +22,39 @@ export default function Review() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const loadQueue = async () => {
+  // Sync state if searchParams change externally (e.g. browser navigation or deep link)
+  useEffect(() => {
+    const q = searchParams.get("username") || searchParams.get("validator") || "";
+    if (q !== selectedUsername) {
+      setSelectedUsername(q);
+      setSearchInput(q);
+    }
+  }, [searchParams]);
+
+  const loadValidators = async () => {
+    try {
+      const data = await api<ReviewValidator[]>("/review/validators");
+      setValidators(data);
+    } catch {
+      // Graceful fallback if endpoint is not supported
+    }
+  };
+
+  const loadQueue = async (usernameFilter?: string) => {
     try {
       setLoading(true);
       setError(null);
-      const items = await api<ReviewSentence[]>("/review/queue");
+      const queryParam =
+        usernameFilter && usernameFilter.trim()
+          ? `?username=${encodeURIComponent(usernameFilter.trim())}`
+          : "";
+      const items = await api<ReviewSentence[]>(`/review/queue${queryParam}`);
       setQueue(items);
       setCurrentIndex(0);
       if (items.length > 0) {
         setEditedLuganda(items[0].clean_lug);
       }
+      loadValidators();
     } catch (err: any) {
       setError(err?.message || "Failed to load clinical review queue.");
     } finally {
@@ -31,8 +63,36 @@ export default function Review() {
   };
 
   useEffect(() => {
-    loadQueue();
-  }, []);
+    loadQueue(selectedUsername);
+  }, [selectedUsername]);
+
+  const handleSelectValidator = (username: string) => {
+    setSelectedUsername(username);
+    setSearchInput(username);
+    if (username) {
+      setSearchParams({ username });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = searchInput.trim();
+    setSelectedUsername(trimmed);
+    if (trimmed) {
+      setSearchParams({ username: trimmed });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleClearFilter = () => {
+    setSelectedUsername("");
+    setSearchInput("");
+    setSearchParams({});
+  };
+
 
   const currentSentence = queue[currentIndex] || null;
 
@@ -68,6 +128,7 @@ export default function Review() {
       if (currentIndex >= updatedQueue.length) {
         setCurrentIndex(Math.max(0, updatedQueue.length - 1));
       }
+      loadValidators();
     } catch (err: any) {
       setError(err?.message || "Failed to approve sentence.");
     } finally {
@@ -94,6 +155,7 @@ export default function Review() {
       if (currentIndex >= updatedQueue.length) {
         setCurrentIndex(Math.max(0, updatedQueue.length - 1));
       }
+      loadValidators();
     } catch (err: any) {
       setError(err?.message || "Failed to reject sentence.");
     } finally {
@@ -101,13 +163,38 @@ export default function Review() {
     }
   };
 
-  if (loading && queue.length === 0) {
-    return <p className="center muted">Loading clinical review queue…</p>;
-  }
+  const totalWaiting = validators.reduce((acc, v) => acc + v.count, 0) || queue.length;
 
   return (
     <div className="review-container">
+      {/* Targeted Contributor Direct Review Context Bar */}
+      {selectedUsername && (
+        <div className="review-context-banner">
+          <div className="context-left">
+            <span className="direct-badge">Direct Review Mode</span>
+            <span className="context-user-label">Auditing submissions for:</span>
+            <strong>{selectedUsername}</strong>
+            <span className="context-count-tag">
+              ({queue.length} {queue.length === 1 ? "sentence" : "sentences"} waiting)
+            </span>
+          </div>
+          <div className="context-actions">
+            <Link to="/admin?tab=payouts" className="small-btn ghost-btn" style={{ textDecoration: "none" }}>
+              ← Return to Payout Requests
+            </Link>
+            <Link to="/admin?tab=users" className="small-btn ghost-btn" style={{ textDecoration: "none" }}>
+              ← Return to User Roles
+            </Link>
+            <button className="link clear-filter-btn" onClick={handleClearFilter} style={{ fontSize: "0.85rem" }}>
+              Clear Filter
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="review-header">
+
         <div>
           <h1>Clinical & Linguistic Review</h1>
           <p className="hint">
@@ -116,9 +203,9 @@ export default function Review() {
         </div>
         <div className="row" style={{ gap: "0.5rem" }}>
           <span className="queue-pill">
-            {queue.length} {queue.length === 1 ? "sentence" : "sentences"} waiting
+            {totalWaiting} {totalWaiting === 1 ? "sentence" : "sentences"} waiting
           </span>
-          <button className="ghost" onClick={loadQueue} disabled={loading}>
+          <button className="ghost" onClick={() => loadQueue(selectedUsername)} disabled={loading}>
             {loading ? "…" : "↻ Refresh"}
           </button>
         </div>
@@ -138,19 +225,130 @@ export default function Review() {
         </div>
       )}
 
-      {!currentSentence ? (
+      {/* Review By Username / Validator Filter Card */}
+      <div className="review-filter-bar">
+        <div className="review-filter-row">
+          <span className="review-filter-label">Filter by Validator:</span>
+
+          {/* Quick Select by Active Validator */}
+          <select
+            className="validator-select"
+            value={selectedUsername}
+            onChange={(e) => handleSelectValidator(e.target.value)}
+            aria-label="Select validator"
+          >
+            <option value="">👥 All Validators ({totalWaiting} waiting)</option>
+            {validators.map((v) => (
+              <option key={v.id} value={v.name}>
+                👤 {v.name} ({v.count} {v.count === 1 ? "sentence" : "sentences"})
+              </option>
+            ))}
+          </select>
+
+          {/* Search by Username / Email */}
+          <form onSubmit={handleSearchSubmit} className="username-search-group">
+            <input
+              type="text"
+              className="username-search-input"
+              placeholder="Search username or email…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            <button type="submit" className="primary small-btn" disabled={loading}>
+              Filter
+            </button>
+            {selectedUsername && (
+              <button type="button" className="ghost small-btn" onClick={handleClearFilter}>
+                Clear
+              </button>
+            )}
+          </form>
+        </div>
+
+        {/* Active Filter Pill */}
+        {selectedUsername && (
+          <div className="filter-active-pill">
+            <span>
+              Targeting validator: <strong>"{selectedUsername}"</strong> ({queue.length}{" "}
+              {queue.length === 1 ? "sentence" : "sentences"} in queue)
+            </span>
+            <button type="button" className="clear-filter-btn" onClick={handleClearFilter}>
+              Show All
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Main Review Station */}
+      {loading && queue.length === 0 ? (
+        <p className="center muted">Loading clinical review queue…</p>
+      ) : !currentSentence ? (
         <div className="card center review-empty-card">
-          <h2>🎉 Review Queue is Clear!</h2>
+          <h2>
+            {selectedUsername ? `No Pending Items for "${selectedUsername}"` : "🎉 Review Queue is Clear!"}
+          </h2>
           <p className="muted" style={{ maxWidth: "28rem", margin: "0.5rem auto 1.5rem" }}>
-            All submitted translations have been clinically checked and verified.
-            Validators are actively working on remaining sentences.
+            {selectedUsername
+              ? `There are no unverified translations waiting for "${selectedUsername}". You can select another validator or review all submissions.`
+              : "All submitted translations have been clinically checked and verified. Validators are actively working on remaining sentences."}
           </p>
-          <button className="ghost" onClick={loadQueue}>
-            Check for New Submissions
-          </button>
+          {selectedUsername ? (
+            <button className="primary" onClick={handleClearFilter}>
+              View All Waiting Sentences ({totalWaiting})
+            </button>
+          ) : (
+            <button className="ghost" onClick={() => loadQueue()}>
+              Check for New Submissions
+            </button>
+          )}
         </div>
       ) : (
         <div className="card review-card">
+          {/* Non-linear Sentence Navigator / Jumper */}
+          <div className="review-nav-strip">
+            <div className="queue-progress-info">
+              <span>Sentence {currentIndex + 1} of {queue.length}</span>
+              {selectedUsername && <span className="tag easy">Filtered</span>}
+            </div>
+
+            {/* Jump directly to any sentence in the queue */}
+            <select
+              className="sentence-jump-select"
+              value={currentIndex}
+              onChange={(e) => setCurrentIndex(Number(e.target.value))}
+              aria-label="Jump directly to specific sentence"
+              title="Jump directly to another sentence in the queue"
+            >
+              {queue.map((item, idx) => (
+                <option key={item.id} value={idx}>
+                  #{item.id} — {item.validator_name} ({item.difficulty.toUpperCase()}) — "{item.noisy_english.slice(0, 32)}…"
+                </option>
+              ))}
+            </select>
+
+            {/* Fast Previous / Next controls */}
+            <div className="queue-nav-buttons">
+              <button
+                type="button"
+                className="queue-nav-btn"
+                onClick={() => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : queue.length - 1))}
+                disabled={queue.length <= 1 || submitting}
+                title="Go to previous sentence"
+              >
+                ← Prev
+              </button>
+              <button
+                type="button"
+                className="queue-nav-btn"
+                onClick={() => setCurrentIndex((prev) => (prev + 1) % queue.length)}
+                disabled={queue.length <= 1 || submitting}
+                title="Go to next sentence"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+
           <div className="review-meta-bar">
             <div className="row" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
               <span className="sentence-id-tag">Sentence #{currentSentence.id}</span>
@@ -158,8 +356,20 @@ export default function Review() {
               <span className="reward-tag">{ugx(currentSentence.reward_ugx)}</span>
             </div>
             <div className="validator-info hint">
-              Translated by <strong>{currentSentence.validator_name}</strong> •{" "}
-              {new Date(currentSentence.validated_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+              Translated by{" "}
+              <button
+                type="button"
+                className="link"
+                style={{ fontWeight: 700, padding: 0 }}
+                onClick={() => handleSelectValidator(currentSentence.validator_name)}
+                title={`Filter all entries by ${currentSentence.validator_name}`}
+              >
+                {currentSentence.validator_name}
+              </button>
+              {currentSentence.validator_email && (
+                <span className="validator-email-hint"> ({currentSentence.validator_email})</span>
+              )}{" "}
+              • {new Date(currentSentence.validated_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
             </div>
           </div>
 
