@@ -139,6 +139,38 @@ export type DatasetExportStats = {
   recent_exports: DatasetExportHistory[];
 };
 
+export type TicketCategory = "clinical_terminology" | "review_dispute" | "payout_issue" | "role_request" | "general";
+export type TicketStatus = "open" | "in_progress" | "resolved";
+export type TargetRole = "reviewer" | "admin";
+
+export type TicketMessage = {
+  id: string;
+  ticket_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: Role;
+  message: string;
+  created_at: string;
+};
+
+export type InquiryTicket = {
+  id: string;
+  author_id: string;
+  author_name: string;
+  author_email: string;
+  author_role: Role;
+  category: TicketCategory;
+  target_role: TargetRole;
+  subject: string;
+  status: TicketStatus;
+  sentence_id?: number | null;
+  payout_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  last_message_preview: string;
+  messages?: TicketMessage[];
+};
 
 export const IS_TEST_MODE = import.meta.env.VITE_TEST_MODE === "true" || import.meta.env.MODE === "test";
 const BASE = String(import.meta.env.VITE_API_URL ?? import.meta.env.MY_PREF_API_URL ?? "http://localhost:8000").trim().replace(/\/+$/, "");

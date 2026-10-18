@@ -8,6 +8,7 @@ import Work from "./pages/Work";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import Review from "./pages/Review";
+import Inquiries from "./pages/Inquiries";
 import TestPersonaSwitcher from "./components/TestPersonaSwitcher";
 import "./styles.css";
 
@@ -45,6 +46,7 @@ function Shell() {
           {isAdmin && <NavLink to="/admin">Admin</NavLink>}
           {isReviewer && <NavLink to="/review">Review</NavLink>}
           <NavLink to="/work">Work</NavLink>
+          <NavLink to="/inquiries">Inquiries</NavLink>
           <NavLink to="/profile">Profile</NavLink>
         </nav>
 
@@ -96,6 +98,10 @@ function Shell() {
               <NavLink to="/work" onClick={() => setMobileMenuOpen(false)}>
                 <span className="link-icon">✍️</span>
                 <span>Work / Tasks</span>
+              </NavLink>
+              <NavLink to="/inquiries" onClick={() => setMobileMenuOpen(false)}>
+                <span className="link-icon">💬</span>
+                <span>Inquiries & Support</span>
               </NavLink>
               <NavLink to="/profile" onClick={() => setMobileMenuOpen(false)}>
                 <span className="link-icon">👤</span>
@@ -175,6 +181,7 @@ export default function App() {
               }
             />
             <Route path="/work" element={<Work />} />
+            <Route path="/inquiries" element={<Inquiries />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<DefaultRedirect />} />

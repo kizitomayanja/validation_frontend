@@ -42,6 +42,33 @@ export type MockPayout = {
   processed_at: string | null;
 };
 
+export type MockTicketMessage = {
+  id: string;
+  ticket_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: "validator" | "reviewer" | "admin";
+  message: string;
+  created_at: string;
+};
+
+export type MockTicket = {
+  id: string;
+  author_id: string;
+  author_name: string;
+  author_email: string;
+  author_role: "validator" | "reviewer" | "admin";
+  category: "clinical_terminology" | "review_dispute" | "payout_issue" | "role_request" | "general";
+  target_role: "reviewer" | "admin";
+  subject: string;
+  status: "open" | "in_progress" | "resolved";
+  sentence_id?: number | null;
+  payout_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  messages: MockTicketMessage[];
+};
+
 export type MockReviewSentence = {
   id: number;
   noisy_english: string;
@@ -329,6 +356,70 @@ const INITIAL_REVIEW_SENTENCES: MockReviewSentence[] = [
   },
 ];
 
+const INITIAL_TICKETS: MockTicket[] = [
+  {
+    id: "t-101",
+    author_id: "u3",
+    author_name: "Amina Nabukeera",
+    author_email: "validator@ekyama.health",
+    author_role: "validator",
+    category: "clinical_terminology",
+    target_role: "reviewer",
+    subject: "Clinical phrasing for severe chest pain with deep inhalation",
+    status: "in_progress",
+    sentence_id: 101,
+    payout_id: null,
+    created_at: "2026-10-18T14:40:00Z",
+    updated_at: "2026-10-18T15:00:00Z",
+    messages: [
+      {
+        id: "tm-1",
+        ticket_id: "t-101",
+        sender_id: "u3",
+        sender_name: "Amina Nabukeera",
+        sender_role: "validator",
+        message: "Doctor, when translating 'stabbing pain in chest when inhaling deeply', should I use 'obulumi obusala mu kifuba' or 'obulumi obufumita'? Which is better understood in rural health centres?",
+        created_at: "2026-10-18T14:40:00Z",
+      },
+      {
+        id: "tm-2",
+        ticket_id: "t-101",
+        sender_id: "u2",
+        sender_name: "Dr. Sarah Namubiru",
+        sender_role: "reviewer",
+        message: "Hello Amina! In clinical triage, 'obusala mu kifuba' is more intuitive for patients and accurately denotes pleuritic sharp pain. Great work checking with us.",
+        created_at: "2026-10-18T15:00:00Z",
+      },
+    ],
+  },
+  {
+    id: "t-102",
+    author_id: "u5",
+    author_name: "Grace Alupo",
+    author_email: "grace.alupo@ekyama.health",
+    author_role: "validator",
+    category: "payout_issue",
+    target_role: "admin",
+    subject: "Payout #po-102 timing & Airtel verification",
+    status: "open",
+    sentence_id: null,
+    payout_id: "po-102",
+    created_at: "2026-10-18T19:30:00Z",
+    updated_at: "2026-10-18T19:30:00Z",
+    messages: [
+      {
+        id: "tm-3",
+        ticket_id: "t-102",
+        sender_id: "u5",
+        sender_name: "Grace Alupo",
+        sender_role: "validator",
+        message: "Admin, I requested a withdrawal of UGX 68,000 to my Airtel number (+256701889900). Is there any additional documentation needed for the clinical verification?",
+        created_at: "2026-10-18T19:30:00Z",
+      },
+    ],
+  },
+];
+
 // ------------------------------------------------------------- State Variables
 let RATE = 2000;
 let MIN_REWARD = 100;
@@ -341,6 +432,7 @@ let methods: MockPaymentMethod[] = JSON.parse(JSON.stringify(INITIAL_METHODS));
 let adminPayouts: MockPayout[] = JSON.parse(JSON.stringify(INITIAL_PAYOUTS));
 let reviewQueue: MockReviewSentence[] = JSON.parse(JSON.stringify(INITIAL_REVIEW_SENTENCES));
 let workPos = 0;
+let mockTickets: MockTicket[] = JSON.parse(JSON.stringify(INITIAL_TICKETS));
 
 let recentExports = [
   {
@@ -415,6 +507,7 @@ export function resetMockState(): void {
   adminPayouts = JSON.parse(JSON.stringify(INITIAL_PAYOUTS));
   reviewQueue = JSON.parse(JSON.stringify(INITIAL_REVIEW_SENTENCES));
   workPos = 0;
+  mockTickets = JSON.parse(JSON.stringify(INITIAL_TICKETS));
 }
 
 // ------------------------------------------------------------- Mock Fetch Engine
@@ -574,8 +667,12 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     if (!pm) return json({ detail: "Choose a registered mobile money account." }, 400);
 
     const available = getAvailableForUser(currentUser);
-    if (available < MIN_CASHOUT) {
-      return json({ detail: `You need at least UGX ${MIN_CASHOUT} to cash out.` }, 400);
+    const requestedAmount = (body.amount_ugx && body.amount_ugx > 0) ? body.amount_ugx : available;
+    if (requestedAmount < MIN_CASHOUT) {
+      return json({ detail: `You need at least UGX ${MIN_CASHOUT.toLocaleString()} to cash out.` }, 400);
+    }
+    if (requestedAmount > available) {
+      return json({ detail: `Requested amount (UGX ${requestedAmount.toLocaleString()}) exceeds your available balance of UGX ${available.toLocaleString()}.` }, 400);
     }
 
     const p: MockPayout = {
@@ -583,7 +680,7 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
       user_id: currentUser.id,
       user_name: currentUser.full_name,
       user_email: currentUser.email,
-      amount_ugx: available,
+      amount_ugx: requestedAmount,
       status: "pending",
       requested_at: new Date().toISOString(),
       provider: pm.provider,
@@ -902,6 +999,179 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     const id = parseInt(parts[parts.length - 2], 10);
     reviewQueue = reviewQueue.filter((s) => s.id !== id);
     return json(null, 204);
+  }
+
+  // ------------------------------------------------------------- Inquiries & Support Tickets
+  if (cleanPath === "/tickets" && m === "GET") {
+    const queryStr = path.includes("?") ? path.split("?")[1] : "";
+    const params = new URLSearchParams(queryStr);
+    const scope = params.get("scope") || params.get("filter") || (currentUser.role === "validator" ? "my" : "inbox");
+
+    let list: MockTicket[] = [];
+
+    // Privacy rule: Validators can strictly ONLY see tickets they created themselves.
+    if (currentUser.role === "validator") {
+      list = mockTickets.filter((t) => t.author_id === currentUser.id);
+    } else if (scope === "my") {
+      // In "My Inquiries", users (even reviewers/admins) see only tickets they authored
+      list = mockTickets.filter((t) => t.author_id === currentUser.id);
+    } else if (scope === "clinical") {
+      // Clinical Queue: only clinical terminology and review dispute tickets
+      if (currentUser.role === "reviewer" || currentUser.role === "admin") {
+        list = mockTickets.filter((t) => t.target_role === "reviewer");
+      } else {
+        list = mockTickets.filter((t) => t.author_id === currentUser.id);
+      }
+    } else if (scope === "ops") {
+      // Platform & Ops Queue: only admin tickets (payouts, role requests, general platform questions)
+      if (currentUser.role === "admin") {
+        list = mockTickets.filter((t) => t.target_role === "admin");
+      } else {
+        list = mockTickets.filter((t) => t.author_id === currentUser.id);
+      }
+    } else if (scope === "inbox") {
+      if (currentUser.role === "admin") {
+        list = mockTickets.filter((t) => t.target_role === "admin" || t.author_id === currentUser.id);
+      } else if (currentUser.role === "reviewer") {
+        list = mockTickets.filter((t) => t.target_role === "reviewer" || t.author_id === currentUser.id);
+      } else {
+        list = mockTickets.filter((t) => t.author_id === currentUser.id);
+      }
+    } else {
+      list = mockTickets.filter((t) => t.author_id === currentUser.id);
+    }
+
+    const out = list.map((t) => ({
+      id: t.id,
+      author_id: t.author_id,
+      author_name: t.author_name,
+      author_email: t.author_email,
+      author_role: t.author_role,
+      category: t.category,
+      target_role: t.target_role,
+      subject: t.subject,
+      status: t.status,
+      sentence_id: t.sentence_id,
+      payout_id: t.payout_id,
+      created_at: t.created_at,
+      updated_at: t.updated_at,
+      message_count: t.messages.length,
+      last_message_preview: t.messages[t.messages.length - 1]?.message.slice(0, 80) || "",
+    }));
+    return json(out);
+  }
+
+  if (cleanPath === "/tickets" && m === "POST") {
+    const targetRole = (body.category === "clinical_terminology" || body.category === "review_dispute") ? "reviewer" : "admin";
+    const now = new Date().toISOString();
+    const ticketId = "t-" + Date.now();
+    const msgId = "tm-" + Date.now();
+
+    const initialMsg: MockTicketMessage = {
+      id: msgId,
+      ticket_id: ticketId,
+      sender_id: currentUser.id,
+      sender_name: currentUser.full_name,
+      sender_role: currentUser.role,
+      message: body.message,
+      created_at: now,
+    };
+
+    const newTicket: MockTicket = {
+      id: ticketId,
+      author_id: currentUser.id,
+      author_name: currentUser.full_name,
+      author_email: currentUser.email,
+      author_role: currentUser.role,
+      category: body.category,
+      target_role: targetRole,
+      subject: body.subject,
+      status: "open",
+      sentence_id: body.sentence_id || null,
+      payout_id: body.payout_id || null,
+      created_at: now,
+      updated_at: now,
+      messages: [initialMsg],
+    };
+
+    mockTickets.unshift(newTicket);
+    return json({
+      ...newTicket,
+      message_count: 1,
+      last_message_preview: body.message.slice(0, 80),
+    }, 201);
+  }
+
+  if (cleanPath.startsWith("/tickets/") && !cleanPath.endsWith("/messages") && m === "GET") {
+    const id = cleanPath.split("/").pop();
+    const ticket = mockTickets.find((t) => t.id === id);
+    if (!ticket) return json({ detail: "Inquiry not found." }, 404);
+
+    // Enforce role-based access to ticket details
+    if (currentUser.role === "validator" && ticket.author_id !== currentUser.id) {
+      return json({ detail: "Access denied. You cannot view inquiries that do not concern you." }, 403);
+    }
+    if (currentUser.role === "reviewer" && ticket.target_role !== "reviewer" && ticket.author_id !== currentUser.id) {
+      return json({ detail: "Access denied. Platform & payout inquiries are restricted to administrators." }, 403);
+    }
+
+    return json({
+      ...ticket,
+      message_count: ticket.messages.length,
+      last_message_preview: ticket.messages[ticket.messages.length - 1]?.message.slice(0, 80) || "",
+    });
+  }
+
+  if (cleanPath.startsWith("/tickets/") && cleanPath.endsWith("/messages") && m === "POST") {
+    const parts = cleanPath.split("/");
+    const id = parts[parts.length - 2];
+    const ticket = mockTickets.find((t) => t.id === id);
+    if (!ticket) return json({ detail: "Inquiry not found." }, 404);
+
+    if (currentUser.role === "validator" && ticket.author_id !== currentUser.id) {
+      return json({ detail: "Access denied." }, 403);
+    }
+    if (currentUser.role === "reviewer" && ticket.target_role !== "reviewer" && ticket.author_id !== currentUser.id) {
+      return json({ detail: "Access denied." }, 403);
+    }
+
+    const now = new Date().toISOString();
+    const newMsg: MockTicketMessage = {
+      id: "tm-" + Date.now(),
+      ticket_id: ticket.id,
+      sender_id: currentUser.id,
+      sender_name: currentUser.full_name,
+      sender_role: currentUser.role,
+      message: body.message,
+      created_at: now,
+    };
+    ticket.messages.push(newMsg);
+    ticket.updated_at = now;
+    if (ticket.status === "resolved" && currentUser.id === ticket.author_id) {
+      ticket.status = "in_progress";
+    }
+    return json(newMsg, 201);
+  }
+
+  if (cleanPath.startsWith("/tickets/") && m === "PATCH") {
+    const id = cleanPath.split("/").pop();
+    const ticket = mockTickets.find((t) => t.id === id);
+    if (!ticket) return json({ detail: "Inquiry not found." }, 404);
+
+    if (currentUser.role === "validator" && ticket.author_id !== currentUser.id) {
+      return json({ detail: "Access denied." }, 403);
+    }
+    if (currentUser.role === "reviewer" && ticket.target_role !== "reviewer" && ticket.author_id !== currentUser.id) {
+      return json({ detail: "Access denied." }, 403);
+    }
+
+    if (body.status) ticket.status = body.status;
+    ticket.updated_at = new Date().toISOString();
+    return json({
+      ...ticket,
+      message_count: ticket.messages.length,
+      last_message_preview: ticket.messages[ticket.messages.length - 1]?.message.slice(0, 80) || "",
+    });
   }
 
   return json({ detail: "Not found" }, 404);
