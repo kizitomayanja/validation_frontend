@@ -1936,3 +1936,82 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   transform: translateY(-1px);
   background: #0f172a;
 }
+
+/* ==========================================================================
+   Interactive Direct Review Inside Quality Popup Modal
+   ========================================================================== */
+.clickable-sentence-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.clickable-sentence-row:hover {
+  background-color: #f1f5f9;
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.clickable-row:hover {
+  background-color: #f8fafc;
+}
+
+.accuracy-mini-pill-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.15s ease;
+}
+
+.accuracy-mini-pill-btn:hover {
+  transform: translateY(-1px);
+}
+
+.modal-direct-review-view {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.direct-review-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.back-to-list-btn {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #15803d;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.15s ease;
+}
+
+.back-to-list-btn:hover {
+  color: #166534;
+  text-decoration: underline;
+}
+
+.sentence-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.stepper-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}

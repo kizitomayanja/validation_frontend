@@ -1,8 +1,24 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { AdminOverview, AdminPayout, AdminUser, api, DatasetExportStats, downloadExportCsv, patch, post, Role, Settings, ugx, UserQualityProfile } from "../api";
+import {
+  AdminOverview,
+  AdminPayout,
+  AdminUser,
+  api,
+  DatasetExportStats,
+  downloadExportCsv,
+  patch,
+  post,
+  Role,
+  Settings,
+  ugx,
+  UserQualityProfile,
+  UserSentenceDetail,
+} from "../api";
+import { useAuth } from "../auth";
 
 export default function Admin() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get("tab") as any;
   const initialTab = ["overview", "payouts", "users", "export"].includes(urlTab) ? urlTab : "overview";
@@ -23,6 +39,14 @@ export default function Admin() {
   const [loadingQuality, setLoadingQuality] = useState(false);
   const [qualityError, setQualityError] = useState<string | null>(null);
 
+  // Direct review on clicked sentence inside the quality popup
+  const [inspectSentence, setInspectSentence] = useState<UserSentenceDetail | null>(null);
+  const [directReviewLuganda, setDirectReviewLuganda] = useState("");
+  const [directReviewRejecting, setDirectReviewRejecting] = useState(false);
+  const [directReviewRejectReason, setDirectReviewRejectReason] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSuccessMsg, setReviewSuccessMsg] = useState<string | null>(null);
+
   // Sync tab with URL search parameter
   useEffect(() => {
     const t = searchParams.get("tab") as any;
@@ -39,6 +63,9 @@ export default function Admin() {
   const handleInspectUser = async (userId: string) => {
     try {
       setSelectedUserId(userId);
+      setInspectSentence(null);
+      setDirectReviewRejecting(false);
+      setReviewSuccessMsg(null);
       setLoadingQuality(true);
       setQualityError(null);
       const data = await api<UserQualityProfile>(`/admin/users/${userId}/quality`);
@@ -54,6 +81,127 @@ export default function Admin() {
     setSelectedUserId(null);
     setQualityProfile(null);
     setQualityError(null);
+    setInspectSentence(null);
+    setDirectReviewRejecting(false);
+    setReviewSuccessMsg(null);
+  };
+
+  const handleInspectSentence = (s: UserSentenceDetail) => {
+    setInspectSentence(s);
+    setDirectReviewLuganda(s.clean_lug);
+    setDirectReviewRejecting(false);
+    setDirectReviewRejectReason("");
+    setReviewSuccessMsg(null);
+  };
+
+  const handleBackToSentenceList = () => {
+    setInspectSentence(null);
+    setDirectReviewRejecting(false);
+    setReviewSuccessMsg(null);
+  };
+
+  const handleDirectApprove = async () => {
+    if (!inspectSentence || !qualityProfile) return;
+    try {
+      setReviewSubmitting(true);
+      setReviewSuccessMsg(null);
+      const isEdited = directReviewLuganda.trim() !== inspectSentence.clean_lug.trim();
+      if (isEdited) {
+        await post(`/review/${inspectSentence.id}/edit`, { clean_lug: directReviewLuganda.trim() });
+      } else {
+        await post(`/review/${inspectSentence.id}/approve`);
+      }
+
+      const updatedList = qualityProfile.recent_sentences.map((s) => {
+        if (s.id === inspectSentence.id) {
+          return {
+            ...s,
+            clean_lug: directReviewLuganda.trim(),
+            verified: true,
+            verified_by_name: user?.full_name || "Admin",
+            verified_at: new Date().toISOString(),
+          };
+        }
+        return s;
+      });
+
+      const verifiedCount = updatedList.filter((s) => s.verified).length;
+      const totalCount = updatedList.length;
+      const newAccuracy = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 1000) / 10 : 0;
+
+      setQualityProfile({
+        ...qualityProfile,
+        recent_sentences: updatedList,
+        verified_count: verifiedCount,
+        accuracy_rate: newAccuracy,
+        pending_review_count: Math.max(0, totalCount - verifiedCount),
+      });
+
+      setInspectSentence((prev) =>
+        prev
+          ? {
+              ...prev,
+              clean_lug: directReviewLuganda.trim(),
+              verified: true,
+              verified_by_name: user?.full_name || "Admin",
+              verified_at: new Date().toISOString(),
+            }
+          : null
+      );
+
+      // Keep top-level users and payouts in sync
+      setUsers((prev) =>
+        prev.map((u) => (u.id === qualityProfile.id ? { ...u, verified_count: verifiedCount, accuracy_rate: newAccuracy } : u))
+      );
+      setPayouts((prev) =>
+        prev.map((p) => (p.user_id === qualityProfile.id ? { ...p, verified_count: verifiedCount, accuracy_rate: newAccuracy } : p))
+      );
+
+      setReviewSuccessMsg(`Sentence #${inspectSentence.id} approved and clinically verified!`);
+    } catch (err: any) {
+      alert("Failed to approve sentence: " + (err?.message || "Unknown error"));
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleDirectReject = async () => {
+    if (!inspectSentence || !qualityProfile) return;
+    try {
+      setReviewSubmitting(true);
+      await post(`/review/${inspectSentence.id}/reject`, {
+        rejection_reason: directReviewRejectReason.trim() || undefined,
+      });
+
+      const updatedList = qualityProfile.recent_sentences.filter((s) => s.id !== inspectSentence.id);
+      const verifiedCount = updatedList.filter((s) => s.verified).length;
+      const totalCount = updatedList.length;
+      const newAccuracy = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 1000) / 10 : 0;
+
+      setQualityProfile({
+        ...qualityProfile,
+        recent_sentences: updatedList,
+        verified_count: verifiedCount,
+        accuracy_rate: newAccuracy,
+        pending_review_count: Math.max(0, totalCount - verifiedCount),
+      });
+
+      setInspectSentence(null);
+      setDirectReviewRejecting(false);
+      setDirectReviewRejectReason("");
+      setReviewSuccessMsg(`Sentence #${inspectSentence.id} rejected and returned to queue.`);
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === qualityProfile.id ? { ...u, verified_count: verifiedCount, accuracy_rate: newAccuracy } : u))
+      );
+      setPayouts((prev) =>
+        prev.map((p) => (p.user_id === qualityProfile.id ? { ...p, verified_count: verifiedCount, accuracy_rate: newAccuracy } : p))
+      );
+    } catch (err: any) {
+      alert("Failed to reject sentence: " + (err?.message || "Unknown error"));
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   // Budget configuration form state
@@ -503,16 +651,16 @@ export default function Admin() {
                     <th>Validated</th>
                     <th>Clinical Accuracy</th>
                     <th>Earned</th>
-                    <th>Review Actions</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.slice(0, 5).map((u) => (
-                    <tr key={u.id}>
+                    <tr key={u.id} className="clickable-row" onClick={() => handleInspectUser(u.id)}>
                       <td>
                         <button
                           className="link-style-btn"
-                          onClick={() => handleInspectUser(u.id)}
+                          onClick={(e) => { e.stopPropagation(); handleInspectUser(u.id); }}
                           title="Click to view detailed translation reviews and accuracy breakdown"
                         >
                           <strong>{u.full_name}</strong> ↗
@@ -527,22 +675,13 @@ export default function Admin() {
                       </td>
                       <td><strong>{ugx(u.total_earned_ugx)}</strong></td>
                       <td>
-                        <div className="actions" style={{ marginTop: 0 }}>
-                          <Link
-                            to={`/review?username=${encodeURIComponent(u.email || u.full_name)}`}
-                            className="small-btn inspect-direct-btn"
-                            title="Direct Review: view and verify this contributor's queue in the review station"
-                          >
-                            🩺 Direct Review
-                          </Link>
-                          <button
-                            className="small-btn ghost-btn"
-                            onClick={() => handleInspectUser(u.id)}
-                            title="View accuracy profile & submitted sentences"
-                          >
-                            📊 Quality
-                          </button>
-                        </div>
+                        <button
+                          className="small-btn ghost-btn"
+                          onClick={(e) => { e.stopPropagation(); handleInspectUser(u.id); }}
+                          title="View submitted translations and audit quality"
+                        >
+                          Audit Quality ↗
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -619,9 +758,16 @@ export default function Admin() {
                         <div className="hint">{p.user_email}</div>
                         {p.accuracy_rate !== undefined && (
                           <div style={{ marginTop: "0.2rem" }}>
-                            <span className={`accuracy-mini-pill ${(p.accuracy_rate ?? 0) >= 80 ? "high" : "med"}`}>
-                              {p.accuracy_rate}% accuracy ({p.verified_count ?? 0}/{p.sentence_count} verified)
-                            </span>
+                            <button
+                              type="button"
+                              className="accuracy-mini-pill-btn"
+                              onClick={() => handleInspectUser(p.user_id)}
+                              title="Click to view detailed translation reviews and accuracy breakdown"
+                            >
+                              <span className={`accuracy-mini-pill ${(p.accuracy_rate ?? 0) >= 80 ? "high" : "med"}`}>
+                                {p.accuracy_rate}% accuracy ({p.verified_count ?? 0}/{p.sentence_count} verified) ↗
+                              </span>
+                            </button>
                           </div>
                         )}
                       </td>
@@ -667,37 +813,19 @@ export default function Admin() {
                                 </div>
                               </div>
                             ) : (
-                              <div>
-                                <div className="actions" style={{ marginTop: 0 }}>
-                                  <button
-                                    className="small-btn primary-btn"
-                                    onClick={() => { setActivePayoutAction({ id: p.id, action: "pay" }); setActionInput(""); }}
-                                  >
-                                    ✓ Mark Paid
-                                  </button>
-                                  <button
-                                    className="small-btn danger-btn"
-                                    onClick={() => { setActivePayoutAction({ id: p.id, action: "reject" }); setActionInput(""); }}
-                                  >
-                                    ✕ Reject
-                                  </button>
-                                </div>
-                                <div className="actions" style={{ marginTop: "0.35rem" }}>
-                                  <Link
-                                    to={`/review?username=${encodeURIComponent(p.user_email || p.user_name)}`}
-                                    className="small-btn inspect-direct-btn"
-                                    title="Direct Review: review this validator's pending sentences before authorizing payout"
-                                  >
-                                    🩺 Direct Review
-                                  </Link>
-                                  <button
-                                    className="small-btn ghost-btn"
-                                    onClick={() => handleInspectUser(p.user_id)}
-                                    title="Inspect submitted translations and accuracy details"
-                                  >
-                                    📊 Quality
-                                  </button>
-                                </div>
+                              <div className="actions" style={{ marginTop: 0 }}>
+                                <button
+                                  className="small-btn primary-btn"
+                                  onClick={() => { setActivePayoutAction({ id: p.id, action: "pay" }); setActionInput(""); }}
+                                >
+                                  ✓ Mark Paid
+                                </button>
+                                <button
+                                  className="small-btn danger-btn"
+                                  onClick={() => { setActivePayoutAction({ id: p.id, action: "reject" }); setActionInput(""); }}
+                                >
+                                  ✕ Reject
+                                </button>
                               </div>
                             )}
                           </div>
@@ -707,13 +835,6 @@ export default function Admin() {
                               <strong>Tx:</strong> {p.provider_reference || "N/A"}
                               {p.processed_at && <div>{new Date(p.processed_at).toLocaleDateString()}</div>}
                             </div>
-                            <button
-                              className="link-style-btn hint"
-                              style={{ marginTop: "0.35rem", fontSize: "0.82rem" }}
-                              onClick={() => handleInspectUser(p.user_id)}
-                            >
-                              📊 View Quality Profile
-                            </button>
                           </div>
                         ) : (
                           <div>
@@ -809,22 +930,13 @@ export default function Admin() {
                       </button>
                     </td>
                     <td>
-                      <div className="actions" style={{ marginTop: 0 }}>
-                        <Link
-                          to={`/review?username=${encodeURIComponent(u.email || u.full_name)}`}
-                          className="small-btn inspect-direct-btn"
-                          title="Direct Review: view and verify this contributor's queue in the review station"
-                        >
-                          🩺 Review Work
-                        </Link>
-                        <button
-                          className="small-btn ghost-btn"
-                          onClick={() => handleInspectUser(u.id)}
-                          title="View accuracy profile & submitted sentences"
-                        >
-                          📊 Quality
-                        </button>
-                      </div>
+                      <button
+                        className="small-btn ghost-btn"
+                        onClick={() => handleInspectUser(u.id)}
+                        title="View accuracy profile & submitted translations"
+                      >
+                        Audit Quality ↗
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -1024,108 +1136,285 @@ export default function Admin() {
 
             {qualityProfile && (
               <div className="modal-body">
-                {/* Contributor Profile Header */}
-                <div className="quality-user-meta">
-                  <div>
-                    <h3>{qualityProfile.full_name}</h3>
-                    <p className="hint">{qualityProfile.email} • Joined {new Date(qualityProfile.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <div className="user-meta-tags">
-                    <span className={`role-tag ${qualityProfile.role}`}>{qualityProfile.role}</span>
-                    <span className={`status-pill ${qualityProfile.is_active ? "status-paid" : "status-pending"}`}>
-                      {qualityProfile.is_active ? "Active Account" : "Deactivated"}
-                    </span>
-                  </div>
-                </div>
+                {inspectSentence ? (
+                  /* DIRECT REVIEW VIEW FOR SELECTED TRANSLATION */
+                  <div className="modal-direct-review-view">
+                    <div className="direct-review-header-bar">
+                      <button type="button" className="link back-to-list-btn" onClick={handleBackToSentenceList}>
+                        ← Back to all submissions ({qualityProfile.full_name})
+                      </button>
+                      {qualityProfile.recent_sentences.length > 1 && (
+                        <div className="sentence-stepper">
+                          <span className="hint">
+                            Sentence {qualityProfile.recent_sentences.findIndex((x) => x.id === inspectSentence.id) + 1} of {qualityProfile.recent_sentences.length}
+                          </span>
+                          <div className="stepper-buttons">
+                            <button
+                              type="button"
+                              className="small-btn ghost-btn"
+                              onClick={() => {
+                                const currIdx = qualityProfile.recent_sentences.findIndex((x) => x.id === inspectSentence.id);
+                                const prevIdx = currIdx > 0 ? currIdx - 1 : qualityProfile.recent_sentences.length - 1;
+                                handleInspectSentence(qualityProfile.recent_sentences[prevIdx]);
+                              }}
+                            >
+                              ← Prev
+                            </button>
+                            <button
+                              type="button"
+                              className="small-btn ghost-btn"
+                              onClick={() => {
+                                const currIdx = qualityProfile.recent_sentences.findIndex((x) => x.id === inspectSentence.id);
+                                const nextIdx = (currIdx + 1) % qualityProfile.recent_sentences.length;
+                                handleInspectSentence(qualityProfile.recent_sentences[nextIdx]);
+                              }}
+                            >
+                              Next →
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                {/* Accuracy & Quality KPI Grid */}
-                <div className="quality-kpi-grid">
-                  <div className="quality-kpi-card">
-                    <span className="quality-kpi-label">Clinical Accuracy</span>
-                    <span className={`quality-kpi-val ${qualityProfile.accuracy_rate >= 80 ? "val-high" : "val-med"}`}>
-                      {qualityProfile.accuracy_rate}%
-                    </span>
-                    <span className="hint">{qualityProfile.verified_count} of {qualityProfile.validated_count} verified</span>
-                  </div>
-                  <div className="quality-kpi-card">
-                    <span className="quality-kpi-label">Awaiting QA</span>
-                    <span className="quality-kpi-val val-warn">{qualityProfile.pending_review_count}</span>
-                    <span className="hint">In clinical review queue</span>
-                  </div>
-                  <div className="quality-kpi-card">
-                    <span className="quality-kpi-label">Total Earned</span>
-                    <span className="quality-kpi-val">{ugx(qualityProfile.total_earned_ugx)}</span>
-                    <span className="hint">Paid: {ugx(qualityProfile.paid_out_ugx)}</span>
-                  </div>
-                </div>
+                    {reviewSuccessMsg && (
+                      <div className="notice-banner ok" style={{ margin: "0.75rem 0", padding: "0.75rem 1rem", background: "#dcfce7", color: "#166534", borderRadius: "6px" }}>
+                        ✓ {reviewSuccessMsg}
+                      </div>
+                    )}
 
-                {/* Direct Review Station CTA */}
-                <div className="quality-cta-banner">
+                    <div className="review-meta-bar" style={{ marginTop: "0.75rem" }}>
+                      <div className="row" style={{ gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+                        <span className="sentence-id-tag">Sentence #{inspectSentence.id}</span>
+                        <span className={`tag ${inspectSentence.difficulty}`}>{inspectSentence.difficulty}</span>
+                        <span className="reward-tag">{ugx(inspectSentence.reward_ugx)}</span>
+                        {inspectSentence.verified ? (
+                          <span className="status-pill status-paid">
+                            ✓ Verified {inspectSentence.verified_by_name ? `by ${inspectSentence.verified_by_name}` : ""}
+                          </span>
+                        ) : (
+                          <span className="status-pill status-pending">⏳ Awaiting Clinical QA</span>
+                        )}
+                      </div>
+                      <div className="hint" style={{ marginTop: "0.35rem" }}>
+                        Submitted: {new Date(inspectSentence.validated_at).toLocaleString()}
+                      </div>
+                    </div>
+
+                    <div className="review-comparison-grid" style={{ marginTop: "1rem" }}>
+                      <div className="review-box source-box">
+                        <label className="box-label">Original English Clinical Prompt</label>
+                        <blockquote className="sentence-display english-text">
+                          {inspectSentence.noisy_english}
+                        </blockquote>
+                      </div>
+
+                      <div className="review-box ai-attempt-box">
+                        <label className="box-label">Initial AI Attempt (Uncorrected)</label>
+                        <div className="sentence-display ai-text">
+                          {inspectSentence.attempted}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="review-box edit-box" style={{ marginTop: "1rem" }}>
+                      <div className="row" style={{ marginBottom: "0.4rem" }}>
+                        <label className="box-label">
+                          Validator's Luganda Translation (Editable for clinical refinement)
+                        </label>
+                        {directReviewLuganda.trim() !== inspectSentence.clean_lug.trim() && (
+                          <span className="tag medium">Modified by reviewer</span>
+                        )}
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={directReviewLuganda}
+                        onChange={(e) => setDirectReviewLuganda(e.target.value)}
+                        placeholder="Correct medical terminology or phrasing if necessary…"
+                      />
+                      <span className="hint">
+                        Ensure medical terms (e.g. puleesa, asthma, sukaali, okuziyira, omusaayi) are culturally and clinically accurate.
+                      </span>
+                    </div>
+
+                    {directReviewRejecting ? (
+                      <div className="rejection-box" style={{ marginTop: "1rem" }}>
+                        <h4>Reject and Return Sentence to Validator Pool</h4>
+                        <p className="hint">
+                          Rejecting removes this unverified translation and returns the sentence to the queue for other validators.
+                        </p>
+                        <input
+                          type="text"
+                          placeholder="Reason for rejection (e.g. Inaccurate clinical translation of chest pain)"
+                          value={directReviewRejectReason}
+                          onChange={(e) => setDirectReviewRejectReason(e.target.value)}
+                          autoFocus
+                        />
+                        <div className="actions" style={{ marginTop: "0.5rem" }}>
+                          <button
+                            type="button"
+                            className="reject-btn"
+                            onClick={handleDirectReject}
+                            disabled={reviewSubmitting}
+                          >
+                            {reviewSubmitting ? "Rejecting…" : "Confirm Rejection"}
+                          </button>
+                          <button
+                            type="button"
+                            className="ghost"
+                            onClick={() => setDirectReviewRejecting(false)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="actions review-actions-bar" style={{ marginTop: "1.2rem" }}>
+                        <button
+                          type="button"
+                          className="primary approve-btn"
+                          onClick={handleDirectApprove}
+                          disabled={reviewSubmitting || !directReviewLuganda.trim()}
+                        >
+                          {reviewSubmitting
+                            ? "Saving…"
+                            : directReviewLuganda.trim() !== inspectSentence.clean_lug.trim()
+                            ? "✓ Save Edit & Mark Verified"
+                            : "✓ Approve as Verified"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="ghost reject-trigger-btn"
+                          onClick={() => setDirectReviewRejecting(true)}
+                          disabled={reviewSubmitting}
+                        >
+                          ✕ Reject Translation
+                        </button>
+
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={handleBackToSentenceList}
+                          style={{ marginLeft: "auto" }}
+                        >
+                          ← Back to Submissions
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* CONTRIBUTOR QUALITY OVERVIEW & SUBMISSIONS LIST */
                   <div>
-                    <strong>Direct Clinical Review for {qualityProfile.full_name}</strong>
-                    <div className="hint">
-                      Jump straight into the review station pre-filtered to this contributor to verify or edit their translations.
+                    {/* Contributor Profile Header */}
+                    <div className="quality-user-meta">
+                      <div>
+                        <h3>{qualityProfile.full_name}</h3>
+                        <p className="hint">{qualityProfile.email} • Joined {new Date(qualityProfile.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="user-meta-tags">
+                        <span className={`role-tag ${qualityProfile.role}`}>{qualityProfile.role}</span>
+                        <span className={`status-pill ${qualityProfile.is_active ? "status-paid" : "status-pending"}`}>
+                          {qualityProfile.is_active ? "Active Account" : "Deactivated"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Accuracy & Quality KPI Grid */}
+                    <div className="quality-kpi-grid">
+                      <div className="quality-kpi-card">
+                        <span className="quality-kpi-label">Clinical Accuracy</span>
+                        <span className={`quality-kpi-val ${qualityProfile.accuracy_rate >= 80 ? "val-high" : "val-med"}`}>
+                          {qualityProfile.accuracy_rate}%
+                        </span>
+                        <span className="hint">{qualityProfile.verified_count} of {qualityProfile.validated_count} verified</span>
+                      </div>
+                      <div className="quality-kpi-card">
+                        <span className="quality-kpi-label">Awaiting QA</span>
+                        <span className="quality-kpi-val val-warn">{qualityProfile.pending_review_count}</span>
+                        <span className="hint">In clinical review queue</span>
+                      </div>
+                      <div className="quality-kpi-card">
+                        <span className="quality-kpi-label">Total Earned</span>
+                        <span className="quality-kpi-val">{ugx(qualityProfile.total_earned_ugx)}</span>
+                        <span className="hint">Paid: {ugx(qualityProfile.paid_out_ugx)}</span>
+                      </div>
+                    </div>
+
+                    {/* Instruction notice */}
+                    <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.6rem 0.85rem", fontSize: "0.85rem", color: "#475569", margin: "1rem 0" }}>
+                      💡 <strong>Click any translation row below</strong> to inspect its clinical comparison or perform direct review, edit, or approval.
+                    </div>
+
+                    {/* Submitted Sentences List */}
+                    <div className="quality-sentences-section" style={{ marginTop: "1rem" }}>
+                      <h4 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem" }}>
+                        Submitted Translations ({qualityProfile.recent_sentences.length})
+                      </h4>
+                      {qualityProfile.recent_sentences.length === 0 ? (
+                        <p className="hint center muted" style={{ padding: "1.5rem" }}>
+                          No translations recorded for this contributor yet.
+                        </p>
+                      ) : (
+                        <div className="table-container" style={{ maxHeight: "20rem", overflowY: "auto" }}>
+                          <table className="admin-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>English Prompt</th>
+                                <th>Validated Luganda</th>
+                                <th>Difficulty</th>
+                                <th>Clinical QA Status</th>
+                                <th>Reward</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {qualityProfile.recent_sentences.map((s) => (
+                                <tr
+                                  key={s.id}
+                                  className="clickable-sentence-row"
+                                  onClick={() => handleInspectSentence(s)}
+                                  title="Click to perform direct clinical review on this sentence"
+                                >
+                                  <td><strong>#{s.id}</strong></td>
+                                  <td style={{ maxWidth: "15rem", fontSize: "0.85rem" }}>{s.noisy_english}</td>
+                                  <td style={{ maxWidth: "16rem", fontSize: "0.85rem" }}>
+                                    <strong>{s.clean_lug}</strong>
+                                  </td>
+                                  <td><span className="hint">{s.difficulty}</span></td>
+                                  <td>
+                                    {s.verified ? (
+                                      <span className="status-pill status-paid" title={`Verified by ${s.verified_by_name || 'Qualified Reviewer'}`}>
+                                        ✓ Verified
+                                      </span>
+                                    ) : (
+                                      <span className="status-pill status-pending">
+                                        ⏳ Awaiting QA
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>{ugx(s.reward_ugx)}</td>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="small-btn inspect-direct-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleInspectSentence(s);
+                                      }}
+                                    >
+                                      🩺 Review ↗
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <Link
-                    to={`/review?username=${encodeURIComponent(qualityProfile.email || qualityProfile.full_name)}`}
-                    className="primary-btn small-btn"
-                    style={{ whiteSpace: "nowrap", textDecoration: "none" }}
-                  >
-                    🩺 Open Direct Review Station →
-                  </Link>
-                </div>
-
-                {/* Submitted Sentences List */}
-                <div className="quality-sentences-section" style={{ marginTop: "1.25rem" }}>
-                  <h4 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem" }}>
-                    Submitted Translations ({qualityProfile.recent_sentences.length})
-                  </h4>
-                  {qualityProfile.recent_sentences.length === 0 ? (
-                    <p className="hint center muted" style={{ padding: "1.5rem" }}>
-                      No translations recorded for this contributor yet.
-                    </p>
-                  ) : (
-                    <div className="table-container" style={{ maxHeight: "17rem", overflowY: "auto" }}>
-                      <table className="admin-table">
-                        <thead>
-                          <tr>
-                            <th>#</th>
-                            <th>English Prompt</th>
-                            <th>Validated Luganda</th>
-                            <th>Difficulty</th>
-                            <th>Clinical QA Status</th>
-                            <th>Reward</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {qualityProfile.recent_sentences.map((s) => (
-                            <tr key={s.id}>
-                              <td><strong>#{s.id}</strong></td>
-                              <td style={{ maxWidth: "16rem", fontSize: "0.85rem" }}>{s.noisy_english}</td>
-                              <td style={{ maxWidth: "18rem", fontSize: "0.85rem" }}>
-                                <strong>{s.clean_lug}</strong>
-                              </td>
-                              <td><span className="hint">{s.difficulty}</span></td>
-                              <td>
-                                {s.verified ? (
-                                  <span className="status-pill status-paid" title={`Verified by ${s.verified_by_name || 'Qualified Reviewer'}`}>
-                                    ✓ Verified
-                                  </span>
-                                ) : (
-                                  <span className="status-pill status-pending">
-                                    ⏳ Awaiting QA
-                                  </span>
-                                )}
-                              </td>
-                              <td>{ugx(s.reward_ugx)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             )}
           </div>
