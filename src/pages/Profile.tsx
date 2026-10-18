@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { api, post, ugx, type Balance, type PaymentMethod, type Payout, type Provider } from "../api";
 import { useAuth } from "../auth";
 
@@ -19,6 +20,7 @@ export default function Profile() {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [chosen, setChosen] = useState("");
+  const [customAmount, setCustomAmount] = useState<string>("");
   const [form, setForm] = useState({ provider: "mtn" as Provider, phone: "", name: "" });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -41,15 +43,30 @@ export default function Profile() {
     if (!phone) { setError("Enter a Ugandan number, like 0772 123456."); return; }
     run(async () => { await post("/me/payment-methods", { provider: form.provider, phone_number: phone, account_name: form.name.trim() }); setForm({ ...form, phone: "", name: "" }); });
   };
+
+  const hasPending = payouts.some((p) => p.status === "pending");
+  const short = bal ? bal.min_cashout_ugx - bal.available_ugx : 0;
+  const withdrawAmount = bal
+    ? customAmount.trim() === ""
+      ? bal.available_ugx
+      : Number(customAmount)
+    : 0;
+  const isCustomValid =
+    !!bal &&
+    !isNaN(withdrawAmount) &&
+    Number.isInteger(withdrawAmount) &&
+    withdrawAmount >= bal.min_cashout_ugx &&
+    withdrawAmount <= bal.available_ugx;
+  const remainingBalance = bal && isCustomValid ? Math.max(0, bal.available_ugx - withdrawAmount) : (bal?.available_ugx ?? 0);
+  const canCash = !!chosen && short <= 0 && !hasPending && !busy && isCustomValid;
+
   const cashOut = () => run(async () => {
-    await post("/payouts", { payment_method_id: chosen });
+    await post("/payouts", { payment_method_id: chosen, amount_ugx: withdrawAmount });
+    setCustomAmount("");
     setNotice("Withdrawal request submitted! Your translations will undergo clinical review. Once reviews are successfully approved, your payment will be sent to your mobile money within 24 to 48 hours.");
   });
 
   if (!bal) return <p className="muted">{error || "Loading…"}</p>;
-  const hasPending = payouts.some((p) => p.status === "pending");
-  const short = bal.min_cashout_ugx - bal.available_ugx;
-  const canCash = !!chosen && short <= 0 && !hasPending && !busy;
 
   return (
     <section className="profile">
@@ -75,12 +92,77 @@ export default function Profile() {
             </select>
           </label>
         )}
-        <button className="primary" disabled={!canCash} onClick={cashOut}>Cash out {ugx(bal.available_ugx)}</button>
+
+        <div className="cashout-amount-container">
+          <label htmlFor="custom-cashout-input">Amount to withdraw (UGX)</label>
+          <div className="amount-input-row">
+            <span className="amount-currency-label">UGX</span>
+            <input
+              id="custom-cashout-input"
+              type="number"
+              min={bal.min_cashout_ugx}
+              max={bal.available_ugx}
+              step={1000}
+              placeholder={bal.available_ugx > 0 ? String(bal.available_ugx) : "0"}
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              disabled={busy || short > 0 || hasPending}
+              className="amount-input"
+            />
+          </div>
+
+          <div className="amount-presets">
+            <button
+              type="button"
+              className={`chip-btn ${customAmount === String(bal.min_cashout_ugx) ? "active" : ""}`}
+              onClick={() => setCustomAmount(String(bal.min_cashout_ugx))}
+              disabled={busy || short > 0 || hasPending}
+            >
+              Min ({ugx(bal.min_cashout_ugx)})
+            </button>
+            {bal.available_ugx > bal.min_cashout_ugx && (
+              <button
+                type="button"
+                className={`chip-btn ${customAmount === String(Math.floor(bal.available_ugx / 2)) ? "active" : ""}`}
+                onClick={() => setCustomAmount(String(Math.floor(bal.available_ugx / 2)))}
+                disabled={busy || short > 0 || hasPending}
+              >
+                50% ({ugx(Math.floor(bal.available_ugx / 2))})
+              </button>
+            )}
+            <button
+              type="button"
+              className={`chip-btn ${customAmount === "" || customAmount === String(bal.available_ugx) ? "active" : ""}`}
+              onClick={() => setCustomAmount(String(bal.available_ugx))}
+              disabled={busy || short > 0 || hasPending}
+            >
+              All / Max ({ugx(bal.available_ugx)})
+            </button>
+          </div>
+
+          {customAmount.trim() !== "" && !isCustomValid && (
+            <p className="cashout-calc-error">
+              {withdrawAmount < bal.min_cashout_ugx
+                ? `Minimum withdrawal amount is ${ugx(bal.min_cashout_ugx)}.`
+                : `Amount cannot exceed your available balance of ${ugx(bal.available_ugx)}.`}
+            </p>
+          )}
+
+          {isCustomValid && (
+            <div className="cashout-calc-summary">
+              <span>Remaining balance after cash-out:</span>
+              <strong>{ugx(remainingBalance)}</strong>
+            </div>
+          )}
+        </div>
+
+        <button className="primary" disabled={!canCash} onClick={cashOut}>
+          Cash out {isCustomValid ? ugx(withdrawAmount) : ugx(bal.available_ugx)}
+        </button>
         {methods.length === 0 && <p className="muted">Add a mobile money account below to cash out.</p>}
         {notice && <p className="ok" role="status">{notice}</p>}
         {error && <p className="error" role="alert">{error}</p>}
       </div>
-
 
       <dl className="stats">
         <div><dt>Total earned</dt><dd>{ugx(bal.total_earned_ugx)}</dd></div>
@@ -125,6 +207,15 @@ export default function Profile() {
                     ⏳ Under clinical review. Sent within 24–48 hours upon successful verification.
                   </div>
                 )}
+                <div style={{ marginTop: "0.4rem" }}>
+                  <Link
+                    to={`/inquiries?category=payout_issue&payout_id=${encodeURIComponent(p.id)}`}
+                    className="payout-inquiry-link"
+                    title="Need help or have an issue regarding this payout?"
+                  >
+                    💬 Inquire about this payout
+                  </Link>
+                </div>
               </div>
               <span className={`tag ${p.status}`}>{STATUS[p.status]}</span>
             </li>
