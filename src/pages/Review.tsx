@@ -373,20 +373,11 @@ export default function Review() {
             </div>
           </div>
 
-          <div className="review-comparison-grid">
-            <div className="review-box source-box">
-              <label className="box-label">Original English Clinical Prompt</label>
-              <blockquote className="sentence-display english-text">
-                {currentSentence.noisy_english}
-              </blockquote>
-            </div>
-
-            <div className="review-box ai-attempt-box">
-              <label className="box-label">Initial AI Attempt (Uncorrected)</label>
-              <div className="sentence-display ai-text">
-                {currentSentence.attempted}
-              </div>
-            </div>
+          <div className="review-box source-box">
+            <label className="box-label">Original English Clinical Prompt</label>
+            <blockquote className="sentence-display english-text">
+              {currentSentence.noisy_english}
+            </blockquote>
           </div>
 
           <div className="review-box edit-box" style={{ marginTop: "1rem" }}>

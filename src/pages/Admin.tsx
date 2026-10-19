@@ -1121,14 +1121,14 @@ export default function Admin() {
 
       {/* MODAL: CONTRIBUTOR QUALITY & TRANSLATION REVIEWS DRILLDOWN */}
       {selectedUserId && (
-        <div className="modal-backdrop" onClick={handleCloseQualityModal}>
-          <div className="modal-dialog quality-profile-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop">
+          <div className="modal-dialog quality-profile-modal">
             <div className="modal-header">
               <div>
                 <h2>Contributor Quality &amp; Translation Oversight</h2>
                 <p className="hint">Audit translation accuracy and verify clinical quality directly.</p>
               </div>
-              <button className="ghost close-modal-btn" onClick={handleCloseQualityModal}>✕</button>
+              <button className="ghost close-modal-btn" onClick={handleCloseQualityModal} title="Close window" aria-label="Close modal">✕</button>
             </div>
 
             {loadingQuality && <p className="center muted">Loading contributor review profile…</p>}
@@ -1200,20 +1200,11 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="review-comparison-grid" style={{ marginTop: "1rem" }}>
-                      <div className="review-box source-box">
-                        <label className="box-label">Original English Clinical Prompt</label>
-                        <blockquote className="sentence-display english-text">
-                          {inspectSentence.noisy_english}
-                        </blockquote>
-                      </div>
-
-                      <div className="review-box ai-attempt-box">
-                        <label className="box-label">Initial AI Attempt (Uncorrected)</label>
-                        <div className="sentence-display ai-text">
-                          {inspectSentence.attempted}
-                        </div>
-                      </div>
+                    <div className="review-box source-box" style={{ marginTop: "1rem" }}>
+                      <label className="box-label">Original English Clinical Prompt</label>
+                      <blockquote className="sentence-display english-text">
+                        {inspectSentence.noisy_english}
+                      </blockquote>
                     </div>
 
                     <div className="review-box edit-box" style={{ marginTop: "1rem" }}>
@@ -1355,7 +1346,7 @@ export default function Admin() {
                           No translations recorded for this contributor yet.
                         </p>
                       ) : (
-                        <div className="table-container" style={{ maxHeight: "20rem", overflowY: "auto" }}>
+                        <div className="table-container modal-table-container">
                           <table className="admin-table">
                             <thead>
                               <tr>
