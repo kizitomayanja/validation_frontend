@@ -355,15 +355,15 @@ export default function Landing() {
               <div className="step-number">1</div>
               <h3>Claim a Sentence</h3>
               <p>
-                Log in and receive a clinical prompt. You have 15 minutes to review the English source sentence alongside the AI's first attempt.
+                Log in and receive a clinical prompt. You have 15 minutes to review the English clinical source sentence.
               </p>
             </div>
 
             <div className="step-card">
               <div className="step-number">2</div>
-              <h3>Refine in Natural Luganda</h3>
+              <h3>Translate into Natural Luganda</h3>
               <p>
-                Fix grammatical errors, clinical terminology, and tone. If the AI was completely accurate, confirm it with one click.
+                Translate accurately into Luganda, ensuring appropriate clinical terminology, grammatical precision, and respectful patient tone.
               </p>
             </div>
 

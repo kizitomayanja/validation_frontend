@@ -12,12 +12,10 @@ export default function Work() {
   const [session, setSession] = useState({ count: 0, earned: 0 });
   const [flash, setFlash] = useState("");
   const [timeLeft, setTimeLeft] = useState(CLAIM_SECONDS);
-  const [confirmUnchanged, setConfirmUnchanged] = useState(false);
 
   const next = useCallback(async () => {
     setState("loading");
     setError("");
-    setConfirmUnchanged(false);
     try {
       const n = await api<Sentence | undefined>("/work/next");
       if (!n) {
@@ -26,7 +24,7 @@ export default function Work() {
         return;
       }
       setS(n);
-      setText(n.attempted);
+      setText("");
       setTimeLeft(CLAIM_SECONDS);
       setState("ready");
     } catch (e) {
@@ -55,15 +53,9 @@ export default function Work() {
     return () => clearInterval(interval);
   }, [state, s]);
 
-  const isUnchanged = !!s && text.trim() === s.attempted.trim();
-
   const submit = async () => {
     if (!s || !text.trim()) {
       setError("The translation can't be empty.");
-      return;
-    }
-    if (isUnchanged && !confirmUnchanged) {
-      setError("The Luganda translation is identical to the AI attempt. If it requires no edits, check the confirmation box below to verify it.");
       return;
     }
 
@@ -72,7 +64,7 @@ export default function Work() {
     try {
       const r = await post<{ reward_ugx: number }>(`/work/${s.id}/submit`, {
         clean_lug: text.trim(),
-        confirmed_unchanged: isUnchanged && confirmUnchanged,
+        confirmed_unchanged: true,
       });
       setSession((x) => ({ count: x.count + 1, earned: x.earned + r.reward_ugx }));
       setFlash(`Saved. You earned ${ugx(r.reward_ugx)}.`);
@@ -103,7 +95,7 @@ export default function Work() {
       </div>
 
       <p className="session" aria-live="polite">
-        {flash || "Check each sentence, fix the Luganda, then save."}
+        {flash || "Read the clinical source sentence, provide the Luganda translation, then save."}
         {session.count > 0 && <span className="muted"> This session: {session.count} done, {ugx(session.earned)}</span>}
       </p>
 
@@ -132,15 +124,13 @@ export default function Work() {
           </article>
 
           <article className="card">
-            <h2><label htmlFor="lug">Corrected Luganda translation</label></h2>
+            <h2><label htmlFor="lug">Luganda translation</label></h2>
             <textarea
               id="lug"
               lang="lg"
               value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                if (confirmUnchanged) setConfirmUnchanged(false);
-              }}
+              placeholder="Enter your Luganda translation here…"
+              onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
                   e.preventDefault();
@@ -149,29 +139,6 @@ export default function Work() {
               }}
               rows={6}
             />
-
-            <button
-              type="button"
-              className="link"
-              onClick={() => {
-                setText(s.attempted);
-                setConfirmUnchanged(false);
-              }}
-              disabled={text === s.attempted}
-            >
-              Restore original AI attempt
-            </button>
-
-            {isUnchanged && (
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={confirmUnchanged}
-                  onChange={(e) => setConfirmUnchanged(e.target.checked)}
-                />
-                <span>The AI translation is 100% accurate without any mistakes or omissions.</span>
-              </label>
-            )}
 
             {error && <p className="error" role="alert">{error}</p>}
 
