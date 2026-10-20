@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, post, ugx, type Sentence } from "../api";
+import { AiHintTooltip } from "../components/AiHintTooltip";
 
 const CLAIM_SECONDS = 15 * 60; // 15-minute claim lease
 
@@ -124,7 +125,15 @@ export default function Work() {
           </article>
 
           <article className="card">
-            <h2><label htmlFor="lug">Luganda translation</label></h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".5rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <h2 style={{ margin: 0 }}><label htmlFor="lug">Luganda translation</label></h2>
+              {s.attempted && (
+                <AiHintTooltip
+                  text={s.attempted}
+                  label="AI Hint"
+                />
+              )}
+            </div>
             <textarea
               id="lug"
               lang="lg"

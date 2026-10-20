@@ -16,6 +16,7 @@ import {
   UserSentenceDetail,
 } from "../api";
 import { useAuth } from "../auth";
+import { AiHintTooltip } from "../components/AiHintTooltip";
 
 export default function Admin() {
   const { user } = useAuth();
@@ -1208,12 +1209,20 @@ export default function Admin() {
                     </div>
 
                     <div className="review-box edit-box" style={{ marginTop: "1rem" }}>
-                      <div className="row" style={{ marginBottom: "0.4rem" }}>
-                        <label className="box-label">
-                          Validator's Luganda Translation (Editable for clinical refinement)
-                        </label>
-                        {directReviewLuganda.trim() !== inspectSentence.clean_lug.trim() && (
-                          <span className="tag medium">Modified by reviewer</span>
+                      <div className="row" style={{ marginBottom: "0.4rem", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                        <div className="row" style={{ gap: "0.5rem", alignItems: "center" }}>
+                          <label className="box-label">
+                            Validator's Luganda Translation (Editable for clinical refinement)
+                          </label>
+                          {directReviewLuganda.trim() !== inspectSentence.clean_lug.trim() && (
+                            <span className="tag medium">Modified by reviewer</span>
+                          )}
+                        </div>
+                        {inspectSentence.attempted && (
+                          <AiHintTooltip
+                            text={inspectSentence.attempted}
+                            label="AI Hint"
+                          />
                         )}
                       </div>
                       <textarea

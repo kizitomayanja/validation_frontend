@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, post, ReviewSentence, ReviewValidator, ugx } from "../api";
+import { AiHintTooltip } from "../components/AiHintTooltip";
 
 export default function Review() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -381,12 +382,20 @@ export default function Review() {
           </div>
 
           <div className="review-box edit-box" style={{ marginTop: "1rem" }}>
-            <div className="row" style={{ marginBottom: "0.4rem" }}>
-              <label className="box-label">
-                Validator's Luganda Translation (Editable for clinical refinement)
-              </label>
-              {editedLuganda.trim() !== currentSentence.clean_lug.trim() && (
-                <span className="tag medium">Modified by reviewer</span>
+            <div className="row" style={{ marginBottom: "0.4rem", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+              <div className="row" style={{ gap: "0.5rem", alignItems: "center" }}>
+                <label className="box-label">
+                  Validator's Luganda Translation (Editable for clinical refinement)
+                </label>
+                {editedLuganda.trim() !== currentSentence.clean_lug.trim() && (
+                  <span className="tag medium">Modified by reviewer</span>
+                )}
+              </div>
+              {currentSentence.attempted && (
+                <AiHintTooltip
+                  text={currentSentence.attempted}
+                  label="AI Hint"
+                />
               )}
             </div>
             <textarea
