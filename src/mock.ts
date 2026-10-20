@@ -264,13 +264,48 @@ const INITIAL_PAYOUTS: MockPayout[] = [
 ];
 
 const RAW_WORK_ITEMS = [
-  ["Do you have any shortness of breath when you climb stairs?", "Olina okuziyira ng'ogenda waggulu ku madaala?", "hard", 0.62],
-  ["Have you been bringing up any sputum with the cough?", "Olwaddeko okufuuyira sputum n'ekikolokolo?", "medium", 0.38],
-  ["And do you smoke?", "Era onywa taaba?", "easy", 0.05],
-  ["Any family history of asthma or allergies?", "Waliwo omuntu mu maka go alina asthma oba allergies?", "medium", 0.3],
-  ["Take one tablet twice daily after meals for five days.", "Mina empeke emu emirundi ebiri buli lunaku oluvannyuma lw'emmere okumala ennaku ttaano.", "easy", 0.2],
-  ["If convulsions occur, position the patient on their left side immediately.", "Singa ensimbu ez'omutwe zibalukawo, teeka omulwadde ku lubiri olwa kkono amangu ddala.", "hard", 0.75],
-  ["Ensure the child completes the full course of oral antibiotic suspension.", "Kkiriza omwana amalire ddala eddagala ly'ekirwadde lyonna ery'okunywa.", "medium", 0.45],
+  // 1. Long, multi-sentence clinical consultation monologue (High workload, highest priority, hard, reward ~1,840 UGX)
+  [
+    "Yeah, so definitely one thing we need to rule out with the symptoms you're describing, including the progressive shortness of breath, chronic cough, and peripheral edema, is an acute exacerbation of COPD or underlying congestive heart failure. We will need to perform diagnostic spirometry, a chest radiograph to evaluate cardiomegaly, and order blood tests. If your oxygen saturation remains below ninety-two percent on room air, supplemental oxygen therapy will be initiated immediately.",
+    "Yee, ekintu kimu kye tulina okuggyamu ku bubonero bw'onnyonnyola, omuli okuziyira okweyongera, ekifuba ekikalu, n'okuzimba amagulu, kwe kulumwa COPD oba obunafu bw'omutima. Tulina okukola ekigezo ky'ensasira, ekifaananyi ky'ekifuba, n'okupima omusaayi. Singa omukka gwo ogwa oxygen gubeera wansi wa bitundu eby'ekikumi mu mwenda mu bibiri, tujja kukuwa mangu ddala oxygen ey'enyongeza.",
+    "hard",
+    0.92,
+  ],
+  // 2. Complex diagnostic sentence (Medium-high workload, hard, reward ~1,400 UGX)
+  [
+    "The patient presents with persistent nocturnal cough, orthopnea, bilateral crackles on lung auscultation, and signs of pulmonary edema.",
+    "Omulwadde azze n'ekifuba eky'ekiro ekitakoma, okuziyira ng'agalamidde, amaloboozi ag'enjawulo mu mawuggwe, n'obubonero obw'amazzi mu mawuggwe.",
+    "hard",
+    0.70,
+  ],
+  // 3. Medium medication sentence with specific clinical terms (Medium workload, medium, reward ~780 UGX)
+  [
+    "Yeah, I take uhm, an ACE inhibitor, statin, uhm, and an ASA for my blood pressure and cholesterol.",
+    "Yee, nkozesa eddagala lya ACE inhibitor, statin, ne ASA olwa puleesa n'amasavu mu musaayi.",
+    "medium",
+    0.39,
+  ],
+  // 4. Standard clinical instruction (Medium workload, medium, reward ~600 UGX)
+  [
+    "Ensure the oral rehydration solution is mixed thoroughly with clean, boiled drinking water before administration.",
+    "Kakasa nti amazzi ga ORS gatabuliddwa bulungi mu mazzi amafumbe amayonjo ag'okunywa nga tonnawa mulwadde.",
+    "medium",
+    0.30,
+  ],
+  // 5. Short routine prompt (Easy workload, easy, reward ~200 UGX)
+  [
+    "Do you experience any shortness of breath when you climb stairs?",
+    "Olina okuziyira kwonna ng'olinnya amadaala?",
+    "easy",
+    0.10,
+  ],
+  // 6. Very short routine prompt (Easy workload, easy, reward ~100 UGX)
+  [
+    "And do you smoke?",
+    "Era onywa taaba?",
+    "easy",
+    0.05,
+  ],
 ];
 
 const INITIAL_REVIEW_SENTENCES: MockReviewSentence[] = [
