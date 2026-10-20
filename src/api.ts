@@ -3,7 +3,17 @@ import { mockFetch } from "./mock";
 export type Role = "validator" | "reviewer" | "admin";
 export type User = { id: string; email: string; full_name: string; role: Role };
 export type Sentence = { id: number; noisy_english: string; attempted: string; difficulty: "easy" | "medium" | "hard"; reward_ugx: number };
-export type Balance = { total_earned_ugx: number; available_ugx: number; pending_ugx: number; paid_out_ugx: number; validated_count: number; min_cashout_ugx: number };
+export type Balance = {
+  total_earned_ugx: number;
+  available_ugx: number;
+  pending_ugx: number;
+  paid_out_ugx: number;
+  validated_count: number;
+  verified_count?: number;
+  pending_review_count?: number;
+  pending_review_ugx?: number;
+  min_cashout_ugx: number;
+};
 export type Provider = "mtn" | "airtel";
 export type PaymentMethod = { id: string; provider: Provider; phone_number: string; account_name: string; is_default: boolean };
 export type Payout = { id: string; amount_ugx: number; status: "pending" | "paid" | "rejected" | "cancelled"; requested_at: string; provider: Provider; phone_number: string; account_name: string };

@@ -572,12 +572,21 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
   if (cleanPath === "/me/balance" && m === "GET") {
     const pending = getPendingForUser(currentUser.id);
     const available = getAvailableForUser(currentUser);
+    const verifiedCount = currentUser.verified_count || 0;
+    const pendingReviewCount = Math.max(0, currentUser.validated_count - verifiedCount);
+    const pendingReviewUgx = reviewQueue
+      .filter((q) => (q.validated_by_id === currentUser.id || q.validator_email === currentUser.email) && !q.verified)
+      .reduce((acc, q) => acc + q.reward_ugx, 0) || (pendingReviewCount * 2000);
+
     return json({
       total_earned_ugx: currentUser.total_earned_ugx,
       available_ugx: available,
       pending_ugx: pending,
       paid_out_ugx: currentUser.paid_out_ugx,
       validated_count: currentUser.validated_count,
+      verified_count: verifiedCount,
+      pending_review_count: pendingReviewCount,
+      pending_review_ugx: pendingReviewUgx,
       min_cashout_ugx: MIN_CASHOUT,
     });
   }
@@ -605,7 +614,7 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     const rAmount = reward(raw[3] as number);
     workPos++;
     currentUser.validated_count++;
-    currentUser.total_earned_ugx += rAmount;
+    // Note: total_earned_ugx is only credited once the translation is clinically verified by a reviewer
 
     // Queue into review station for the reviewer to audit
     reviewQueue.unshift({
@@ -977,6 +986,15 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     item.verified = true;
     item.verified_by_name = currentUser.full_name;
     item.verified_at = new Date().toISOString();
+
+    // Credit validator upon clinical verification
+    const valUser = mockUsers.find((u) => u.id === item.validated_by_id || u.email === item.validator_email);
+    if (valUser) {
+      valUser.verified_count = (valUser.verified_count || 0) + 1;
+      valUser.total_earned_ugx += item.reward_ugx;
+      valUser.accuracy_rate = Math.round((valUser.verified_count / Math.max(1, valUser.validated_count)) * 1000) / 10;
+    }
+
     reviewQueue = reviewQueue.filter((s) => s.id !== id);
     return json(item);
   }
@@ -990,6 +1008,15 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     item.verified = true;
     item.verified_by_name = currentUser.full_name;
     item.verified_at = new Date().toISOString();
+
+    // Credit validator upon clinical verification
+    const valUser = mockUsers.find((u) => u.id === item.validated_by_id || u.email === item.validator_email);
+    if (valUser) {
+      valUser.verified_count = (valUser.verified_count || 0) + 1;
+      valUser.total_earned_ugx += item.reward_ugx;
+      valUser.accuracy_rate = Math.round((valUser.verified_count / Math.max(1, valUser.validated_count)) * 1000) / 10;
+    }
+
     reviewQueue = reviewQueue.filter((s) => s.id !== id);
     return json(item);
   }

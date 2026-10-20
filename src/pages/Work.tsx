@@ -67,7 +67,7 @@ export default function Work() {
         confirmed_unchanged: true,
       });
       setSession((x) => ({ count: x.count + 1, earned: x.earned + r.reward_ugx }));
-      setFlash(`Saved. You earned ${ugx(r.reward_ugx)}.`);
+      setFlash(`Saved! Submitted for clinical review (${ugx(r.reward_ugx)} will be credited upon verification).`);
       await next();
     } catch (e) {
       setError((e as Error).message);
@@ -96,7 +96,7 @@ export default function Work() {
 
       <p className="session" aria-live="polite">
         {flash || "Read the clinical source sentence, provide the Luganda translation, then save."}
-        {session.count > 0 && <span className="muted"> This session: {session.count} done, {ugx(session.earned)}</span>}
+        {session.count > 0 && <span className="muted"> This session: {session.count} submitted ({ugx(session.earned)} queued for review)</span>}
       </p>
 
       {state === "loading" && <p className="muted">Fetching your next sentence…</p>}

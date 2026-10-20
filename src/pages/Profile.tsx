@@ -60,10 +60,18 @@ export default function Profile() {
   const remainingBalance = bal && isCustomValid ? Math.max(0, bal.available_ugx - withdrawAmount) : (bal?.available_ugx ?? 0);
   const canCash = !!chosen && short <= 0 && !hasPending && !busy && isCustomValid;
 
+  const totalValidated = bal?.validated_count ?? 0;
+  const verifiedCount = bal?.verified_count ?? 0;
+  const pendingReviewCount = bal?.pending_review_count ?? Math.max(0, totalValidated - verifiedCount);
+  const pendingReviewUgx = bal?.pending_review_ugx ?? (pendingReviewCount * 2000);
+  const reviewPct = totalValidated > 0 ? Math.min(100, Math.round((verifiedCount / totalValidated) * 100)) : 0;
+  const isThresholdReached = (bal?.available_ugx ?? 0) >= (bal?.min_cashout_ugx ?? 10000);
+  const thresholdPct = bal && bal.min_cashout_ugx > 0 ? Math.min(100, Math.round((bal.available_ugx / bal.min_cashout_ugx) * 100)) : 0;
+
   const cashOut = () => run(async () => {
     await post("/payouts", { payment_method_id: chosen, amount_ugx: withdrawAmount });
     setCustomAmount("");
-    setNotice("Withdrawal request submitted! Your translations will undergo clinical review. Once reviews are successfully approved, your payment will be sent to your mobile money within 24 to 48 hours.");
+    setNotice("Withdrawal request submitted! Your payment of verified earnings will be sent to your mobile money account within 24 to 48 hours.");
   });
 
   if (!bal) return <p className="muted">{error || "Loading…"}</p>;
@@ -73,16 +81,94 @@ export default function Profile() {
       <h1>{user?.full_name}</h1>
       <p className="muted">{user?.email}</p>
 
+      {/* Earnings Verification Disclaimer */}
+      <div className="verification-payout-disclaimer">
+        <strong>💡 Earnings Disclaimer:</strong> Translation earnings will be added to your ready cash-out balance as soon as your translations have been clinically verified by a reviewer. Once verified, you can withdraw your funds immediately.
+      </div>
+
+      {/* Translation Review Progress & Cashout Threshold */}
+      <div className="card review-progress-card">
+        <div className="review-progress-header">
+          <div>
+            <h2>Translation Review Progress</h2>
+            <p className="hint">Track clinical verification of your submitted Luganda translations.</p>
+          </div>
+          <span className={`review-badge ${reviewPct === 100 && totalValidated > 0 ? "verified-all" : "in-progress"}`}>
+            {reviewPct === 100 && totalValidated > 0 ? "✓ 100% Verified" : `${reviewPct}% Reviewed`}
+          </span>
+        </div>
+
+        <div className="progress-section">
+          <div className="progress-label-row">
+            <span>
+              <strong>{verifiedCount}</strong> of <strong>{totalValidated}</strong> translations verified
+            </span>
+            <span className="hint">
+              {pendingReviewCount > 0
+                ? `${pendingReviewCount} waiting for review (~${ugx(pendingReviewUgx)} pending)`
+                : totalValidated > 0
+                ? "All translations verified!"
+                : "No translations submitted yet"}
+            </span>
+          </div>
+          <div className="progress-bar-bg review-bar-bg">
+            <div
+              className={`progress-bar-fill ${reviewPct === 100 && totalValidated > 0 ? "forest" : "gold"}`}
+              style={{ width: `${reviewPct}%` }}
+            />
+          </div>
+          {reviewPct === 100 && totalValidated > 0 ? (
+            <div className="review-bar-celebration">
+              🎉 <strong>Review bar filled!</strong> All your submitted translations have been successfully verified and credited to your ready balance.
+            </div>
+          ) : pendingReviewCount > 0 ? (
+            <div className="review-bar-hint">
+              Reviewers verify clinical accuracy in the order received. As soon as each translation is verified, its reward is added to your ready balance.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="threshold-section">
+          <div className="threshold-label-row">
+            <span className="threshold-title">
+              {isThresholdReached
+                ? "✓ Minimum Cashout Threshold Reached"
+                : `Cashout Threshold (${ugx(bal.min_cashout_ugx)})`}
+            </span>
+            <span className="hint">
+              {isThresholdReached
+                ? `${ugx(bal.available_ugx)} ready to withdraw`
+                : `Need ${ugx(short)} more verified earnings`}
+            </span>
+          </div>
+          <div className="progress-bar-bg threshold-bar-bg">
+            <div
+              className={`progress-bar-fill ${isThresholdReached ? "forest" : "warning"}`}
+              style={{ width: `${thresholdPct}%` }}
+            />
+          </div>
+          {isThresholdReached ? (
+            <p className="threshold-note success">
+              ✓ <strong>Threshold reached!</strong> Your verified earnings meet or exceed the minimum requirement of {ugx(bal.min_cashout_ugx)}. You can cash out below.
+            </p>
+          ) : (
+            <p className="threshold-note pending">
+              ⚠️ Minimum cashout is <strong>{ugx(bal.min_cashout_ugx)}</strong>. Once more translations are verified and your balance hits the threshold, withdrawal unlocks.
+            </p>
+          )}
+        </div>
+      </div>
+
       <div className="card balance">
-        <p className="label">Ready to cash out</p>
+        <p className="label">Ready to cash out (verified)</p>
         <p className="big">{ugx(bal.available_ugx)}</p>
         <p className="muted">
           {hasPending ? "A cash-out is currently pending review and payment."
-            : short > 0 ? `Earn ${ugx(short)} more to reach the ${ugx(bal.min_cashout_ugx)} minimum.` : "You can cash out now."}
+            : short > 0 ? `Verify ${ugx(short)} more to reach the ${ugx(bal.min_cashout_ugx)} minimum cashout.` : "You can cash out now."}
         </p>
 
         <div className="cashout-timing-notice">
-          <strong>⏱️ Withdrawal Timeline:</strong> Once requested, your translations undergo clinical review for accuracy. If reviews are verified successfully, money is transferred to your mobile money account within <strong>24 to 48 hours</strong>.
+          <strong>⏱️ Mobile Money Transfer:</strong> Once requested, your verified payout will be transferred to your registered mobile money account within <strong>24 to 48 hours</strong>.
         </div>
 
         {methods.length > 0 && (
@@ -164,11 +250,13 @@ export default function Profile() {
         {error && <p className="error" role="alert">{error}</p>}
       </div>
 
-      <dl className="stats">
-        <div><dt>Total earned</dt><dd>{ugx(bal.total_earned_ugx)}</dd></div>
+      <dl className="stats profile-stats-grid">
+        <div><dt>Verified earnings</dt><dd>{ugx(bal.total_earned_ugx)}</dd></div>
+        <div><dt>Pending review</dt><dd>{ugx(pendingReviewUgx)}</dd></div>
         <div><dt>Waiting for payment</dt><dd>{ugx(bal.pending_ugx)}</dd></div>
         <div><dt>Paid to you</dt><dd>{ugx(bal.paid_out_ugx)}</dd></div>
-        <div><dt>Sentences done</dt><dd>{bal.validated_count}</dd></div>
+        <div><dt>Translations done</dt><dd>{totalValidated}</dd></div>
+        <div><dt>Clinically verified</dt><dd>{verifiedCount}</dd></div>
       </dl>
 
       <h2>Mobile money accounts</h2>

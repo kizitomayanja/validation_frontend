@@ -2705,3 +2705,157 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   }
 }
 
+/* ==========================================================================
+   Earnings Verification Disclaimer & Review Progress Bar (Profile.tsx)
+   ========================================================================== */
+.verification-payout-disclaimer {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid var(--forest);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin: 1rem 0;
+  color: #14532d;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.verification-payout-disclaimer strong {
+  color: #166534;
+}
+
+.review-progress-card {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 1.25rem 1.4rem;
+  border-radius: 10px;
+}
+
+.review-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.review-progress-header h2 {
+  margin: 0 0 0.2rem 0;
+  font-size: 1.2rem;
+  font-family: var(--serif);
+  color: var(--ink);
+}
+
+.review-badge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.review-badge.in-progress {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.review-badge.verified-all {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.progress-section {
+  margin-bottom: 1.2rem;
+}
+
+.progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.review-bar-bg {
+  height: 0.85rem;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.review-bar-celebration {
+  margin-top: 0.5rem;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #14532d;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.review-bar-hint {
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.threshold-section {
+  padding-top: 1rem;
+  border-top: 1px dashed var(--line);
+}
+
+.threshold-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.threshold-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+
+.threshold-bar-bg {
+  height: 0.65rem;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.threshold-note {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+.threshold-note.success {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.threshold-note.pending {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.profile-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)) !important;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
