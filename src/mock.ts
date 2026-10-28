@@ -628,13 +628,40 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
 
   // Work translation endpoints
   if (cleanPath === "/work/next" && m === "GET") {
-    const raw = RAW_WORK_ITEMS[workPos % RAW_WORK_ITEMS.length];
+    const urlParams = new URLSearchParams(path.includes("?") ? path.split("?")[1] : "");
+    const requestedTier = urlParams.get("tier");
+
+    const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+    const getTier = (words: number): "short" | "medium" | "long" => {
+      if (words <= 15) return "short";
+      if (words <= 40) return "medium";
+      return "long";
+    };
+
+    let candidateIndices = RAW_WORK_ITEMS.map((_, i) => i);
+    if (requestedTier && requestedTier !== "all") {
+      const filtered = candidateIndices.filter((idx) => {
+        const words = countWords(RAW_WORK_ITEMS[idx][0] as string);
+        return getTier(words) === requestedTier;
+      });
+      if (filtered.length > 0) {
+        candidateIndices = filtered;
+      }
+    }
+
+    const chosenIdx = candidateIndices[workPos % candidateIndices.length];
+    const raw = RAW_WORK_ITEMS[chosenIdx];
+    const words = countWords(raw[0] as string);
+    const tier = getTier(words);
+
     return json({
-      id: workPos + 1,
+      id: chosenIdx + 1,
       noisy_english: raw[0],
       attempted: raw[1],
       difficulty: raw[2],
       reward_ugx: reward(raw[3] as number),
+      length_tier: tier,
+      length_words: words,
     });
   }
 

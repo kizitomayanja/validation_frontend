@@ -2,7 +2,16 @@ import { mockFetch } from "./mock";
 
 export type Role = "validator" | "reviewer" | "admin";
 export type User = { id: string; email: string; full_name: string; role: Role };
-export type Sentence = { id: number; noisy_english: string; attempted: string; difficulty: "easy" | "medium" | "hard"; reward_ugx: number };
+export type LengthTier = "short" | "medium" | "long";
+export type Sentence = {
+  id: number;
+  noisy_english: string;
+  attempted: string;
+  difficulty: "easy" | "medium" | "hard";
+  reward_ugx: number;
+  length_tier?: LengthTier;
+  length_words?: number;
+};
 export type Balance = {
   total_earned_ugx: number;
   available_ugx: number;
