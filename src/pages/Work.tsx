@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, post, ugx, type Sentence } from "../api";
+import { api, post, ugx, type LengthTier, type Sentence } from "../api";
 import { AiHintTooltip } from "../components/AiHintTooltip";
 
 const CLAIM_SECONDS = 15 * 60; // 15-minute claim lease
+
+type TierFilter = LengthTier | "all";
 
 export default function Work() {
   const [s, setS] = useState<Sentence | null>(null);
@@ -13,12 +15,18 @@ export default function Work() {
   const [session, setSession] = useState({ count: 0, earned: 0 });
   const [flash, setFlash] = useState("");
   const [timeLeft, setTimeLeft] = useState(CLAIM_SECONDS);
+  const [tier, setTier] = useState<TierFilter>(() => {
+    const saved = localStorage.getItem("preferred_length_tier");
+    return (saved === "short" || saved === "medium" || saved === "long") ? saved : "all";
+  });
 
-  const next = useCallback(async () => {
+  const next = useCallback(async (selectedTier?: TierFilter) => {
     setState("loading");
     setError("");
+    const activeTier = selectedTier !== undefined ? selectedTier : tier;
     try {
-      const n = await api<Sentence | undefined>("/work/next");
+      const query = activeTier !== "all" ? `?tier=${activeTier}` : "";
+      const n = await api<Sentence | undefined>(`/work/next${query}`);
       if (!n) {
         setS(null);
         setState("empty");
@@ -32,7 +40,18 @@ export default function Work() {
       setError((e as Error).message);
       setState("empty");
     }
-  }, []);
+  }, [tier]);
+
+  const handleTierSelect = (newTier: TierFilter) => {
+    if (newTier === tier) return;
+    setTier(newTier);
+    localStorage.setItem("preferred_length_tier", newTier);
+    if (!text.trim() || state === "empty") {
+      next(newTier);
+    } else {
+      setFlash(`Preference set to ${newTier === "all" ? "All Tasks" : newTier + " tasks"}. Will apply to your next sentence.`);
+    }
+  };
 
   useEffect(() => {
     next();
@@ -100,11 +119,49 @@ export default function Work() {
         {session.count > 0 && <span className="muted"> This session: {session.count} submitted ({ugx(session.earned)} queued for review)</span>}
       </p>
 
+      <div className="tier-filter-bar" role="toolbar" aria-label="Task size / mood selector">
+        <span className="tier-filter-label">Mood / Task Size:</span>
+        <div className="tier-filter-buttons">
+          <button
+            type="button"
+            className={`tier-btn ${tier === "all" ? "active" : ""}`}
+            onClick={() => handleTierSelect("all")}
+            title="Default: Serves highest priority clinical tasks regardless of length"
+          >
+            🌟 All Tasks
+          </button>
+          <button
+            type="button"
+            className={`tier-btn ${tier === "short" ? "active" : ""}`}
+            onClick={() => handleTierSelect("short")}
+            title="Quick tasks under 15 words – lower cognitive fatigue"
+          >
+            ⚡ Short (≤15w)
+          </button>
+          <button
+            type="button"
+            className={`tier-btn ${tier === "medium" ? "active" : ""}`}
+            onClick={() => handleTierSelect("medium")}
+            title="Standard clinical sentences (16–40 words)"
+          >
+            📄 Standard (16–40w)
+          </button>
+          <button
+            type="button"
+            className={`tier-btn ${tier === "long" ? "active" : ""}`}
+            onClick={() => handleTierSelect("long")}
+            title="Long clinical consultation paragraphs – highest reward"
+          >
+            📚 Long (&gt;40w)
+          </button>
+        </div>
+      </div>
+
       {state === "loading" && <p className="muted">Fetching your next sentence…</p>}
       {state === "empty" && (
         <div className="card">
           <p>{error || "No sentences are waiting right now (or campaign budget has been reached)."}</p>
-          <button className="primary" onClick={next}>Check again</button>
+          <button className="primary" onClick={() => next()}>Check again</button>
         </div>
       )}
 
@@ -121,6 +178,12 @@ export default function Work() {
             <div className="stub">
               <span className="reward">{ugx(s.reward_ugx)}</span>
               <span className={`tag ${s.difficulty}`}>{s.difficulty}</span>
+              {s.length_tier && (
+                <span className={`tag tier-${s.length_tier}`} title={`${s.length_words || ""} words`}>
+                  {s.length_tier === "short" ? "⚡ Short" : s.length_tier === "medium" ? "📄 Standard" : "📚 Long"}
+                  {s.length_words ? ` (${s.length_words}w)` : ""}
+                </span>
+              )}
             </div>
           </article>
 

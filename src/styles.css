@@ -3027,4 +3027,73 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   }
 }
 
+/* Mood & Task Size Selector */
+.tier-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0.75rem 0 1.25rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
 
+.tier-filter-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tier-filter-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tier-btn {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  font-family: var(--sans);
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tier-btn:hover {
+  background: var(--paper);
+  border-color: var(--muted);
+}
+
+.tier-btn.active {
+  background: var(--forest);
+  color: #ffffff;
+  border-color: var(--forest-d);
+  font-weight: 600;
+}
+
+/* Tier Badges */
+.tag.tier-short {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.tag.tier-medium {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-color: #e9d5ff;
+}
+
+.tag.tier-long {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
