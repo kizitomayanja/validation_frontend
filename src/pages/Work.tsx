@@ -47,13 +47,12 @@ export default function Work() {
 
   const handleTierSelect = (newTier: TierFilter) => {
     if (newTier === tier) return;
+    if (text.trim() && !window.confirm("Switching task size will discard your current unsaved translation draft. Continue?")) {
+      return;
+    }
     setTier(newTier);
     localStorage.setItem("preferred_length_tier", newTier);
-    if (!text.trim() || state === "empty") {
-      fetchNextSentence(newTier);
-    } else {
-      setFlash(`Preference set to ${newTier === "all" ? "All Tasks" : newTier + " tasks"}. Will apply to your next sentence.`);
-    }
+    fetchNextSentence(newTier);
   };
 
   useEffect(() => {
