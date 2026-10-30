@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import Landing from "./pages/Landing";
@@ -20,6 +20,17 @@ function Shell() {
   const { user, loading, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Close mobile drawer automatically if window is expanded to desktop width
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 832) {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (loading) return <p className="center muted">Loading…</p>;
   if (!user) return <Navigate to="/login" replace />;
 
@@ -34,42 +45,44 @@ function Shell() {
   return (
     <>
       <header className="top">
-        <div className="top-brand-group">
-          <Link to="/" className="brand" title="View Project Mission & Overview" onClick={() => setMobileMenuOpen(false)}>
-            🌿 Ekyama
-          </Link>
-          <RoleBadge role={user.role} />
+        <div className="top-inner">
+          <div className="top-brand-group">
+            <Link to="/" className="brand" title="View Project Mission & Overview" onClick={() => setMobileMenuOpen(false)}>
+              🌿 Ekyama
+            </Link>
+            <RoleBadge role={user.role} />
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="desktop-nav">
+            {isAdmin && <NavLink to="/admin">Admin</NavLink>}
+            {isReviewer && <NavLink to="/review">Review</NavLink>}
+            <NavLink to="/work">Work</NavLink>
+            <NavLink to="/inquiries">Inquiries</NavLink>
+            <NavLink to="/profile">Profile</NavLink>
+          </nav>
+
+          {/* Desktop User Meta */}
+          <div className="user-nav-meta desktop-user-meta">
+            <span className="user-nav-email" title={user.email}>{user.email}</span>
+            <button className="link signout-btn" onClick={handleSignOut}>Sign out</button>
+          </div>
+
+          {/* Mobile Toggle Button */}
+          <button
+            type="button"
+            className={`shell-mobile-toggle ${mobileMenuOpen ? "open" : ""}`}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+          >
+            <span className="hamburger-icon">
+              <span className="line"></span>
+              <span className="line"></span>
+              <span className="line"></span>
+            </span>
+          </button>
         </div>
-
-        {/* Desktop Navigation */}
-        <nav className="desktop-nav">
-          {isAdmin && <NavLink to="/admin">Admin</NavLink>}
-          {isReviewer && <NavLink to="/review">Review</NavLink>}
-          <NavLink to="/work">Work</NavLink>
-          <NavLink to="/inquiries">Inquiries</NavLink>
-          <NavLink to="/profile">Profile</NavLink>
-        </nav>
-
-        {/* Desktop User Meta */}
-        <div className="user-nav-meta desktop-user-meta">
-          <span className="user-nav-email" title={user.email}>{user.email}</span>
-          <button className="link signout-btn" onClick={handleSignOut}>Sign out</button>
-        </div>
-
-        {/* Mobile Toggle Button */}
-        <button
-          type="button"
-          className={`shell-mobile-toggle ${mobileMenuOpen ? "open" : ""}`}
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-          aria-expanded={mobileMenuOpen}
-        >
-          <span className="hamburger-icon">
-            <span className="line"></span>
-            <span className="line"></span>
-            <span className="line"></span>
-          </span>
-        </button>
 
         {/* Mobile Dropdown Drawer */}
         {mobileMenuOpen && (

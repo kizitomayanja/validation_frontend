@@ -27,11 +27,48 @@ export default function Profile() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [b, m, p] = await Promise.all([api<Balance>("/me/balance"), api<PaymentMethod[]>("/me/payment-methods"), api<Payout[]>("/payouts")]);
-    setBal(b); setMethods(m); setPayouts(p);
-    setChosen((c) => (m.some((x) => x.id === c) ? c : m.find((x) => x.is_default)?.id ?? m[0]?.id ?? ""));
+    setError("");
+    const [bRes, mRes, pRes] = await Promise.allSettled([
+      api<Balance>("/me/balance"),
+      api<PaymentMethod[]>("/me/payment-methods"),
+      api<Payout[]>("/payouts"),
+    ]);
+
+    if (bRes.status === "fulfilled") {
+      setBal(bRes.value);
+    } else {
+      setBal({
+        total_earned_ugx: 0,
+        available_ugx: 0,
+        pending_ugx: 0,
+        paid_out_ugx: 0,
+        validated_count: 0,
+        verified_count: 0,
+        pending_review_count: 0,
+        pending_review_ugx: 0,
+        min_cashout_ugx: 5000,
+      });
+    }
+
+    if (mRes.status === "fulfilled") {
+      const m = mRes.value;
+      setMethods(m);
+      setChosen((c) => (m.some((x) => x.id === c) ? c : m.find((x) => x.is_default)?.id ?? m[0]?.id ?? ""));
+    } else {
+      setMethods([]);
+    }
+
+    if (pRes.status === "fulfilled") {
+      setPayouts(pRes.value);
+    } else {
+      setPayouts([]);
+    }
+
+    if (bRes.status === "rejected" && mRes.status === "rejected" && pRes.status === "rejected") {
+      setError(bRes.reason?.message || "Failed to load account data.");
+    }
   }, []);
-  useEffect(() => { load().catch((e) => setError(e.message)); }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true); setError(""); setNotice("");

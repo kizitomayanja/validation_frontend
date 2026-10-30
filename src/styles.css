@@ -13,17 +13,25 @@ main { max-width: 64rem; margin: 0 auto; padding: 1.25rem 1rem 3.5rem; }
 
 /* Top Shell Navigation */
 .top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
   border-bottom: 1px solid var(--line);
   background: rgba(248, 250, 248, 0.96);
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
   z-index: 100;
+  width: 100%;
+}
+
+.top-inner {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .top-brand-group {
@@ -1842,8 +1850,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
   color: #f8fafc;
   border-bottom: 2px solid #eab308;
-  position: sticky;
-  top: 0;
+  position: relative;
   left: 0;
   right: 0;
   z-index: 9999;
@@ -3286,5 +3293,21 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .tab-btn {
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
+  }
+}
+
+
+/* Clean desktop expansion: hide mobile drawer, backdrop, and allow admin tabs to wrap on desktop */
+@media (min-width: 52.01rem) {
+  .shell-mobile-drawer,
+  .shell-drawer-backdrop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 48.01rem) {
+  .admin-tabs {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
   }
 }

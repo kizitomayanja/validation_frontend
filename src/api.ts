@@ -260,11 +260,16 @@ function refresh(): Promise<boolean> {
 }
 
 export async function api<T = void>(path: string, init?: RequestInit): Promise<T> {
-  let res = await raw(path, init);
-  if (res.status === 401 && (await refresh())) res = await raw(path, init);
+  let res: Response;
+  try {
+    res = await raw(path, init);
+    if (res.status === 401 && (await refresh())) res = await raw(path, init);
+  } catch (err: any) {
+    throw new ApiError(0, err.message === "Failed to fetch" ? "Unable to connect to the server. Please check your internet connection or server status." : (err.message || "Network request failed."));
+  }
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, typeof e.detail === "string" ? e.detail : "Check the details and try again.");
+    throw new ApiError(res.status, typeof e.detail === "string" ? e.detail : `Server error (${res.status}).`);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
