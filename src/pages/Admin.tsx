@@ -458,7 +458,7 @@ export default function Admin() {
 
       {/* Total Project Budget Card */}
       <section className="card budget-control-card">
-        <div className="row" style={{ alignItems: "flex-start" }}>
+        <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
           <div>
             <h2>Project Budget & Financial Pool</h2>
             <p className="hint">Configure the maximum allocation for the crowdsourced Luganda medical translation campaign.</p>

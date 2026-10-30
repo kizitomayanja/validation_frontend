@@ -3097,3 +3097,194 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   color: #92400e;
   border-color: #fde68a;
 }
+
+
+/* ==========================================================================
+   Admin & Campaign Oversight Responsive Mobile Optimization
+   ========================================================================== */
+.admin-container {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.budget-control-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 0.35rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  flex-wrap: nowrap;
+}
+
+.tab-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.user-search-row {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.user-search-row .search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 0.95rem;
+  background: #ffffff;
+}
+
+@media (max-width: 48rem) {
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.45rem;
+    line-height: 1.25;
+  }
+
+  .admin-header button {
+    align-self: flex-start;
+  }
+
+  .budget-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+
+  .metric-box {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .metric-label {
+    font-size: 0.72rem;
+  }
+
+  .metric-value {
+    font-size: 1.15rem;
+  }
+
+  .budget-inputs-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .overview-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .kpi-card {
+    padding: 1rem;
+  }
+
+  .kpi-number {
+    font-size: 1.6rem;
+  }
+
+  .payout-filters-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .filter-group {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 0.25rem;
+    gap: 0.35rem;
+    width: 100%;
+  }
+
+  .sub-tab-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.65rem;
+  }
+
+  .table-container {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.6rem 0.65rem;
+    font-size: 0.82rem;
+  }
+
+  .admin-table .actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  .admin-table .small-btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .role-select {
+    min-width: unset;
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.45rem;
+  }
+
+  .inline-action-modal {
+    min-width: unset;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .export-radio-group {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .export-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .export-action-bar button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 32rem) {
+  .budget-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tabs {
+    gap: 0.35rem;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+}
