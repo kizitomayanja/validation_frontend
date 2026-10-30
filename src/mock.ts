@@ -629,12 +629,13 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
   // Work translation endpoints
   if (cleanPath === "/work/next" && m === "GET") {
     const urlParams = new URLSearchParams(path.includes("?") ? path.split("?")[1] : "");
-    const requestedTier = urlParams.get("tier");
+    const rawTier = urlParams.get("tier");
+    const requestedTier = rawTier ? rawTier.toLowerCase().trim() : null;
 
     const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
     const getTier = (words: number): "short" | "medium" | "long" => {
-      if (words <= 15) return "short";
-      if (words <= 40) return "medium";
+      if (words <= 30) return "short";
+      if (words <= 70) return "medium";
       return "long";
     };
 

@@ -20,12 +20,11 @@ export default function Work() {
     return (saved === "short" || saved === "medium" || saved === "long") ? saved : "all";
   });
 
-  const next = useCallback(async (selectedTier?: TierFilter) => {
+  const fetchNextSentence = useCallback(async (targetTier: TierFilter) => {
     setState("loading");
     setError("");
-    const activeTier = selectedTier !== undefined ? selectedTier : tier;
     try {
-      const query = activeTier !== "all" ? `?tier=${activeTier}` : "";
+      const query = targetTier !== "all" ? `?tier=${targetTier}` : "";
       const n = await api<Sentence | undefined>(`/work/next${query}`);
       if (!n) {
         setS(null);
@@ -40,22 +39,27 @@ export default function Work() {
       setError((e as Error).message);
       setState("empty");
     }
-  }, [tier]);
+  }, []);
+
+  const next = useCallback(() => {
+    return fetchNextSentence(tier);
+  }, [fetchNextSentence, tier]);
 
   const handleTierSelect = (newTier: TierFilter) => {
     if (newTier === tier) return;
     setTier(newTier);
     localStorage.setItem("preferred_length_tier", newTier);
     if (!text.trim() || state === "empty") {
-      next(newTier);
+      fetchNextSentence(newTier);
     } else {
       setFlash(`Preference set to ${newTier === "all" ? "All Tasks" : newTier + " tasks"}. Will apply to your next sentence.`);
     }
   };
 
   useEffect(() => {
-    next();
-  }, [next]);
+    fetchNextSentence(tier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Claim countdown timer
   useEffect(() => {
@@ -134,17 +138,17 @@ export default function Work() {
             type="button"
             className={`tier-btn ${tier === "short" ? "active" : ""}`}
             onClick={() => handleTierSelect("short")}
-            title="Quick tasks under 15 words – lower cognitive fatigue"
+            title="Quick tasks up to 30 words – lower cognitive fatigue"
           >
-            ⚡ Short (≤15w)
+            ⚡ Short (≤30w)
           </button>
           <button
             type="button"
             className={`tier-btn ${tier === "medium" ? "active" : ""}`}
             onClick={() => handleTierSelect("medium")}
-            title="Standard clinical sentences (16–40 words)"
+            title="Standard clinical sentences (31–70 words)"
           >
-            📄 Standard (16–40w)
+            📄 Standard (31–70w)
           </button>
           <button
             type="button"
@@ -152,7 +156,7 @@ export default function Work() {
             onClick={() => handleTierSelect("long")}
             title="Long clinical consultation paragraphs – highest reward"
           >
-            📚 Long (&gt;40w)
+            📚 Long (&gt;70w)
           </button>
         </div>
       </div>
@@ -160,8 +164,23 @@ export default function Work() {
       {state === "loading" && <p className="muted">Fetching your next sentence…</p>}
       {state === "empty" && (
         <div className="card">
-          <p>{error || "No sentences are waiting right now (or campaign budget has been reached)."}</p>
-          <button className="primary" onClick={() => next()}>Check again</button>
+          {error ? (
+            <p className="error" role="alert">{error}</p>
+          ) : tier !== "all" ? (
+            <p>
+              No <strong>{tier === "short" ? "Short (≤30w)" : tier === "medium" ? "Standard (31–70w)" : "Long (>70w)"}</strong> sentences are currently waiting for validation.
+            </p>
+          ) : (
+            <p>No sentences are waiting right now (all available items may be in progress, or campaign budget has been reached).</p>
+          )}
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            <button className="primary" onClick={next}>Check again</button>
+            {tier !== "all" && (
+              <button type="button" className="ghost" onClick={() => handleTierSelect("all")}>
+                Switch to All Tasks
+              </button>
+            )}
+          </div>
         </div>
       )}
 
