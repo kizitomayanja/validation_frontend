@@ -278,12 +278,12 @@ const RAW_WORK_ITEMS = [
     "hard",
     0.70,
   ],
-  // 3. Medium medication sentence with specific clinical terms (Medium workload, medium, reward ~780 UGX)
+  // 3. Standard clinical consultation dialogue (Standard workload, 41 words, medium)
   [
-    "Yeah, I take uhm, an ACE inhibitor, statin, uhm, and an ASA for my blood pressure and cholesterol.",
-    "Yee, nkozesa eddagala lya ACE inhibitor, statin, ne ASA olwa puleesa n'amasavu mu musaayi.",
+    "Yeah, so I take an ACE inhibitor every morning for high blood pressure, and my doctor also prescribed a daily statin to lower cholesterol levels and prevent arterial plaques. I also take a low-dose aspirin after dinner for circulation.",
+    "Yee, nkozesa eddagala lya ACE inhibitor buli makya olwa puleesa, era omusawo yampandiikira ne statin ey'okukendeeza amasavu mu musaayi n'okuziyiza emisuwa okuziba. Era nkozesa ne aspirin eya doosi entono oluvannyuma lw'ekyeggulo olw'entambula y'omusaayi.",
     "medium",
-    0.39,
+    0.65,
   ],
   // 4. Standard clinical instruction (Medium workload, medium, reward ~600 UGX)
   [
@@ -492,8 +492,18 @@ let recentExports = [
   },
 ];
 
-// Helper calculations
-const reward = (cost: number) => Math.max(MIN_REWARD, Math.round(cost * RATE));
+// Helper calculations with calibrated length tier multipliers (Option B: Short=0.75x, Medium=1.25x, Long=2.0x)
+const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+const getTier = (words: number): "short" | "medium" | "long" => {
+  if (words <= 30) return "short";
+  if (words <= 70) return "medium";
+  return "long";
+};
+
+const reward = (cost: number, tier: "short" | "medium" | "long" = "medium") => {
+  const mult = tier === "short" ? 0.75 : tier === "long" ? 2.0 : 1.25;
+  return Math.max(MIN_REWARD, Math.round(cost * RATE * mult));
+};
 
 const getPendingForUser = (userId: string) =>
   adminPayouts
@@ -632,12 +642,7 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
     const rawTier = urlParams.get("tier");
     const requestedTier = rawTier ? rawTier.toLowerCase().trim() : null;
 
-    const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
-    const getTier = (words: number): "short" | "medium" | "long" => {
-      if (words <= 30) return "short";
-      if (words <= 70) return "medium";
-      return "long";
-    };
+
 
     let candidateIndices = RAW_WORK_ITEMS.map((_, i) => i);
     if (requestedTier && requestedTier !== "all") {
@@ -660,7 +665,7 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
       noisy_english: raw[0],
       attempted: raw[1],
       difficulty: raw[2],
-      reward_ugx: reward(raw[3] as number),
+      reward_ugx: reward(raw[3] as number, tier),
       length_tier: tier,
       length_words: words,
     });
@@ -668,13 +673,15 @@ export async function mockFetch(path: string, init: RequestInit): Promise<Respon
 
   if (cleanPath.startsWith("/work/") && cleanPath.endsWith("/submit") && m === "POST") {
     const raw = RAW_WORK_ITEMS[workPos % RAW_WORK_ITEMS.length];
+    const words = countWords(raw[0] as string);
+    const tier = getTier(words);
     if (body.clean_lug === raw[1] && !body.confirmed_unchanged) {
       return json(
         { detail: "The translation is identical to the AI attempt. If the AI was completely accurate, confirm unchanged, or fix any translation errors." },
         422
       );
     }
-    const rAmount = reward(raw[3] as number);
+    const rAmount = reward(raw[3] as number, tier);
     workPos++;
     currentUser.validated_count++;
     // Note: total_earned_ugx is only credited once the translation is clinically verified by a reviewer
